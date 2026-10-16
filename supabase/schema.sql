@@ -1,0 +1,201 @@
+-- Nammude Pailippuram: database setup.
+-- Run this whole file once in Supabase > SQL Editor > New query > Run.
+-- Safe rule of the house: visitors can only READ rows with status = 'approved'.
+-- Only people listed in the `admins` table can add, edit, hide or delete.
+
+-- ---------- Tables ----------
+
+create table if not exists categories (
+  id serial primary key,
+  kind text not null check (kind in ('contact', 'business', 'worker', 'transport')),
+  name text not null,
+  name_ml text,
+  unique (kind, name)
+);
+
+create table if not exists listings (
+  id uuid primary key default gen_random_uuid(),
+  kind text not null check (kind in ('contact', 'business', 'worker', 'transport')),
+  title text not null check (char_length(title) between 2 and 120),
+  category_id int references categories(id) on delete set null,
+  description text check (char_length(description) <= 600),
+  phone text check (char_length(phone) <= 20),
+  whatsapp text check (char_length(whatsapp) <= 20),
+  area text check (char_length(area) <= 80),
+  hours text check (char_length(hours) <= 80),
+  status text not null default 'approved' check (status in ('approved', 'hidden')),
+  verified_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  updated_by uuid
+);
+
+create table if not exists announcements (
+  id uuid primary key default gen_random_uuid(),
+  title text not null check (char_length(title) between 2 and 120),
+  body text check (char_length(body) <= 1500),
+  event_date date,
+  status text not null default 'approved' check (status in ('approved', 'hidden')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  updated_by uuid
+);
+
+create table if not exists bus_routes (
+  id uuid primary key default gen_random_uuid(),
+  route text not null check (char_length(route) between 2 and 120),
+  bus_name text check (char_length(bus_name) <= 80),
+  times text check (char_length(times) <= 800),
+  status text not null default 'approved' check (status in ('approved', 'hidden')),
+  verified_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  updated_by uuid
+);
+
+create table if not exists donors (
+  id uuid primary key default gen_random_uuid(),
+  name text not null check (char_length(name) between 2 and 80),
+  blood_group text not null check (blood_group in ('A+','A-','B+','B-','AB+','AB-','O+','O-')),
+  phone text check (char_length(phone) <= 20),
+  area text check (char_length(area) <= 80),
+  available boolean not null default true,
+  -- A donor may only be listed if they agreed to it.
+  consent boolean not null default true check (consent),
+  status text not null default 'approved' check (status in ('approved', 'hidden')),
+  verified_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  updated_by uuid
+);
+
+create table if not exists panchayath_items (
+  id uuid primary key default gen_random_uuid(),
+  section text not null check (section in ('bearer', 'ward', 'service', 'notice')),
+  title text not null check (char_length(title) between 2 and 120),
+  detail text check (char_length(detail) <= 1000),
+  extra text check (char_length(extra) <= 80), -- a phone number or a date
+  status text not null default 'approved' check (status in ('approved', 'hidden')),
+  verified_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  updated_by uuid
+);
+
+-- What visitors send in. Never shown publicly; admins review it.
+create table if not exists submissions (
+  id uuid primary key default gen_random_uuid(),
+  type text not null check (type in ('business','contact','worker','transport','announcement','donor','bus','other','correction','removal')),
+  title text not null check (char_length(title) between 2 and 120),
+  description text check (char_length(description) <= 1500),
+  phone text check (char_length(phone) <= 20),
+  area text check (char_length(area) <= 80),
+  submitter_contact text check (char_length(submitter_contact) <= 120),
+  consent boolean not null default false,
+  status text not null default 'pending' check (status in ('pending','approved','rejected','handled')),
+  created_at timestamptz not null default now()
+);
+
+-- Admin list. No policies on purpose: nobody can read it from the website.
+create table if not exists admins (
+  user_id uuid primary key references auth.users(id) on delete cascade
+);
+
+-- Who changed what. Admin-only.
+create table if not exists audit_logs (
+  id bigserial primary key,
+  admin_id uuid default auth.uid(),
+  admin_email text,
+  action text not null,
+  table_name text,
+  row_id text,
+  note text,
+  changes jsonb,
+  created_at timestamptz not null default now()
+);
+
+-- ---------- Helpers ----------
+
+create or replace function touch_updated_at() returns trigger
+language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end $$;
+
+create or replace function is_admin() returns boolean
+language sql security definer stable set search_path = public as $$
+  select exists (select 1 from admins where user_id = auth.uid());
+$$;
+
+-- ---------- Row Level Security ----------
+
+alter table categories enable row level security;
+create policy "anyone reads categories" on categories for select using (true);
+create policy "admins manage categories" on categories for all
+  using (is_admin()) with check (is_admin());
+
+do $$
+declare t text;
+begin
+  foreach t in array array['listings','announcements','bus_routes','donors','panchayath_items'] loop
+    execute format('alter table %I enable row level security', t);
+    execute format('create policy "public reads live rows" on %I for select using (status = ''approved'')', t);
+    execute format('create policy "admins read all" on %I for select using (is_admin())', t);
+    execute format('create policy "admins add" on %I for insert with check (is_admin())', t);
+    execute format('create policy "admins edit" on %I for update using (is_admin()) with check (is_admin())', t);
+    execute format('create policy "admins delete" on %I for delete using (is_admin())', t);
+    execute format('create trigger touch_%1$s before update on %1$I for each row execute function touch_updated_at()', t);
+  end loop;
+end $$;
+
+alter table submissions enable row level security;
+create policy "anyone can send a submission" on submissions for insert
+  with check (status = 'pending');
+create policy "admins read submissions" on submissions for select using (is_admin());
+create policy "admins update submissions" on submissions for update
+  using (is_admin()) with check (is_admin());
+create policy "admins delete submissions" on submissions for delete using (is_admin());
+
+alter table admins enable row level security;
+
+alter table audit_logs enable row level security;
+create policy "admins read log" on audit_logs for select using (is_admin());
+create policy "admins write log" on audit_logs for insert
+  with check (is_admin() and admin_id = auth.uid());
+
+-- ---------- Starter categories (edit freely) ----------
+
+insert into categories (kind, name, name_ml) values
+  ('contact', 'Emergency', 'അടിയന്തരം'),
+  ('contact', 'Health', 'ആരോഗ്യം'),
+  ('contact', 'Government', 'സർക്കാർ'),
+  ('contact', 'Services', 'സേവനങ്ങൾ'),
+  ('business', 'Grocery', 'പലചരക്ക്'),
+  ('business', 'Food', 'ഭക്ഷണം'),
+  ('business', 'Repairs', 'റിപ്പയർ'),
+  ('business', 'Building', 'നിർമ്മാണം'),
+  ('business', 'Other', 'മറ്റുള്ളവ'),
+  ('worker', 'Mason / Builder', 'മേസൻ / കെട്ടിടപ്പണി'),
+  ('worker', 'Painter', 'പെയിന്റർ'),
+  ('worker', 'Electrician', 'ഇലക്ട്രീഷ്യൻ'),
+  ('worker', 'Plumber', 'പ്ലംബർ'),
+  ('worker', 'Carpenter', 'ആശാരി / തച്ചൻ'),
+  ('worker', 'Welder / Fabricator', 'വെൽഡിങ് / ഫാബ്രിക്കേഷൻ'),
+  ('worker', 'Tile / Granite', 'ടൈൽ / ഗ്രാനൈറ്റ്'),
+  ('worker', 'Coconut Climber / Cutter', 'തെങ്ങ് കയറ്റം / മരം മുറിക്കൽ'),
+  ('worker', 'JCB / Earthmover', 'ജെസിബി / ടിപ്പർ'),
+  ('worker', 'Daily Wage / Labour', 'തൊഴിലാളി / കൂലിപ്പണി'),
+  ('transport', 'Auto Rickshaw', 'ഓട്ടോറിക്ഷ'),
+  ('transport', 'Taxi / Cab', 'ടാക്സി / കാർ'),
+  ('transport', 'Earthmover / JCB / Tipper', 'ജെ.സി.ബി / ടിപ്പർ'),
+  ('transport', 'Pickup / Goods', 'പിക്കപ്പ് / ഗുഡ്സ്'),
+  ('transport', 'Traveler / Tourist Van', 'ട്രാവലർ / വാൻ'),
+  ('transport', 'Ambulance / Emergency', 'ആംബുലൻസ്')
+on conflict do nothing;
+
+-- ---------- After the first admin signs up ----------
+-- 1. Supabase > Authentication > Users > Add user (email + password).
+-- 2. Copy that user's UID, then run:
+--    insert into admins (user_id) values ('PASTE-THE-UID-HERE');
+-- Repeat for a second admin so the site never depends on one person.
