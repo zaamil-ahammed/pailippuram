@@ -62,6 +62,21 @@ export default function AdminEdit() {
 
   if (!cfg) return <div className="page"><main className="body"><p>Unknown section.</p></main></div>;
 
+  if (section === 'bus' && isNew) {
+    return (
+      <div className="page">
+        <PageHeader title="Bus timings" ml="ബസ് സമയം" back="/admin/bus" backLabel="Bus routes" />
+        <main className="body">
+          <div className="note">
+            <strong>Adding new bus routes is disabled.</strong>
+            <p>You can edit and update existing bus routes and departure timings from the list.</p>
+          </div>
+          <button type="button" className="btn dark big" onClick={() => router.push('/admin/bus')}>Back to bus routes</button>
+        </main>
+      </div>
+    );
+  }
+
   const set = (name) => (e) => {
     const t = e.target;
     setValues((v) => ({ ...v, [name]: t.type === 'checkbox' ? t.checked : t.value }));
@@ -72,7 +87,7 @@ export default function AdminEdit() {
     setCatBusy(true);
     setMsg('');
     const targetKind = cfg.match?.kind || 'business';
-    const { data: createdCat, error: catErr } = await supabase
+    let { data: createdCat, error: catErr } = await supabase
       .from('categories')
       .insert({
         kind: targetKind,
@@ -81,6 +96,27 @@ export default function AdminEdit() {
       })
       .select('id, name')
       .single();
+
+    if (catErr && (catErr.message?.includes('kind_check') || catErr.message?.includes('check constraint'))) {
+      const fallbackKinds = ['business', 'shop', 'contact'].filter((k) => k !== targetKind);
+      for (const fk of fallbackKinds) {
+        const alt = await supabase
+          .from('categories')
+          .insert({
+            kind: fk,
+            name: newCatName.trim(),
+            name_ml: newCatMl.trim() || null,
+          })
+          .select('id, name')
+          .single();
+        if (!alt.error && alt.data) {
+          createdCat = alt.data;
+          catErr = null;
+          break;
+        }
+      }
+    }
+
     setCatBusy(false);
     if (catErr) {
       setMsg(catErr.message || 'Could not save category.');
@@ -137,6 +173,42 @@ export default function AdminEdit() {
     let error;
 
     async function executeSave(data) {
+      if (cfg.table === 'categories') {
+        const catPayload = {
+          name: data.name,
+          name_ml: data.name_ml || null,
+          kind: data.kind || 'business',
+        };
+        if (isNew) {
+          let res = await supabase.from('categories').insert(catPayload).select('id').single();
+          if (res.error && (res.error.message?.includes('kind_check') || res.error.message?.includes('check constraint'))) {
+            const fallbackKinds = ['business', 'shop', 'contact'].filter((k) => k !== catPayload.kind);
+            for (const fk of fallbackKinds) {
+              const tryAlt = await supabase.from('categories').insert({ ...catPayload, kind: fk }).select('id').single();
+              if (!tryAlt.error) {
+                res = tryAlt;
+                break;
+              }
+            }
+          }
+          return { error: res.error, rowId: res.data?.id };
+        } else {
+          const numId = /^\d+$/.test(String(id).trim()) ? Number(id) : id;
+          let res = await supabase.from('categories').update(catPayload).eq('id', numId);
+          if (res.error && (res.error.message?.includes('kind_check') || res.error.message?.includes('check constraint'))) {
+            const fallbackKinds = ['business', 'shop', 'contact'].filter((k) => k !== catPayload.kind);
+            for (const fk of fallbackKinds) {
+              const tryAlt = await supabase.from('categories').update({ ...catPayload, kind: fk }).eq('id', numId);
+              if (!tryAlt.error) {
+                res = tryAlt;
+                break;
+              }
+            }
+          }
+          return { error: res.error, rowId: id };
+        }
+      }
+
       if (isNew) {
         let insertData = { ...data, ...cfg.match };
         if (cfg.table === 'listings' && !insertData.kind) {
@@ -152,27 +224,37 @@ export default function AdminEdit() {
           const { updated_by, ...cleaned } = insertData;
           res = await supabase.from(cfg.table).insert({ ...cleaned, status: altStatus }).select('id').single();
         }
-        if (res.error && res.error.message && res.error.message.includes('listings_kind_check')) {
-          console.warn('[Admin Save] listings_kind_check constraint violation for kind:', insertData.kind, '- applying business fallback');
-          const originalKind = insertData.kind || 'worker';
-          const { updated_by, ...cleaned } = insertData;
-          const tag = `[${originalKind.toUpperCase()}]`;
-          const safeDesc = cleaned.description ? (cleaned.description.includes(tag) ? cleaned.description : `${tag} ${cleaned.description}`) : tag;
-          
-          res = await supabase.from(cfg.table).insert({
-            ...cleaned,
-            kind: 'business',
-            description: safeDesc,
-          }).select('id').single();
+        if (res.error && res.error.message && (res.error.message.includes('kind_check') || res.error.message.includes('listings_kind_check'))) {
+          console.warn('[Admin Save] listings_kind_check constraint violation for kind:', insertData.kind, '- trying candidate fallbacks');
+          const originalKind = insertData.kind || cfg.match?.kind || 'worker';
+          const tag = `[${String(originalKind).toUpperCase()}]`;
+          const safeDesc = insertData.description
+            ? (insertData.description.includes(tag) ? insertData.description : `${tag} ${insertData.description}`)
+            : tag;
+          const { updated_by, ...baseCleaned } = insertData;
 
-          if (res.error && res.error.message && res.error.message.includes('status_check')) {
-            const altStatus = insertData.status === 'hidden' ? 'archived' : 'hidden';
-            res = await supabase.from(cfg.table).insert({
-              ...cleaned,
-              kind: 'business',
+          const candidateKinds = ['business', 'shop', 'contact', 'other'].filter((k) => k !== insertData.kind);
+          for (const candKind of candidateKinds) {
+            let tryRes = await supabase.from(cfg.table).insert({
+              ...baseCleaned,
+              kind: candKind,
               description: safeDesc,
-              status: altStatus,
             }).select('id').single();
+
+            if (tryRes.error && tryRes.error.message && tryRes.error.message.includes('status_check')) {
+              const altStatus = insertData.status === 'hidden' ? 'archived' : 'hidden';
+              tryRes = await supabase.from(cfg.table).insert({
+                ...baseCleaned,
+                kind: candKind,
+                description: safeDesc,
+                status: altStatus,
+              }).select('id').single();
+            }
+
+            if (!tryRes.error) {
+              res = tryRes;
+              break;
+            }
           }
         }
         return { error: res.error, rowId: res.data?.id };
@@ -188,10 +270,17 @@ export default function AdminEdit() {
           const { updated_by, ...cleaned } = updateData;
           res = await supabase.from(cfg.table).update({ ...cleaned, status: altStatus }).eq('id', id);
         }
-        if (res.error && res.error.message && res.error.message.includes('listings_kind_check')) {
-          console.warn('[Admin Save] listings_kind_check on update - applying business fallback');
-          const { updated_by, ...cleaned } = updateData;
-          res = await supabase.from(cfg.table).update({ ...cleaned, kind: 'business' }).eq('id', id);
+        if (res.error && res.error.message && (res.error.message.includes('kind_check') || res.error.message.includes('listings_kind_check'))) {
+          console.warn('[Admin Save] listings_kind_check on update - trying candidate fallbacks');
+          const { updated_by, ...baseCleaned } = updateData;
+          const candidateKinds = ['business', 'shop', 'contact', 'other'];
+          for (const candKind of candidateKinds) {
+            const tryRes = await supabase.from(cfg.table).update({ ...baseCleaned, kind: candKind }).eq('id', id);
+            if (!tryRes.error) {
+              res = tryRes;
+              break;
+            }
+          }
         }
         return { error: res.error, rowId: id };
       }

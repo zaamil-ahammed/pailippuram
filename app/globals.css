@@ -69,6 +69,8 @@ p { margin: 0; }
 }
 .band input[type='search']::placeholder {
   color: #94a3b8;
+  opacity: 0.45;
+  font-style: italic;
 }
 .band input[type='search']:focus {
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.45), 0 8px 24px rgba(0, 0, 0, 0.15);
@@ -163,6 +165,42 @@ input:focus, select:focus, textarea:focus {
   outline: none;
 }
 textarea { padding: 12px 14px; min-height: 100px; resize: vertical; }
+
+/* Sample / placeholder text in forms made subtle and less visible */
+input::placeholder,
+textarea::placeholder,
+select::placeholder {
+  color: #94a3b8 !important;
+  opacity: 0.38 !important;
+  font-weight: 400 !important;
+  font-style: italic;
+  font-size: 0.94em;
+}
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder {
+  color: #94a3b8 !important;
+  opacity: 0.38 !important;
+  font-weight: 400 !important;
+  font-style: italic;
+  font-size: 0.94em;
+}
+input::-moz-placeholder,
+textarea::-moz-placeholder {
+  color: #94a3b8 !important;
+  opacity: 0.38 !important;
+  font-weight: 400 !important;
+  font-style: italic;
+  font-size: 0.94em;
+}
+input:-ms-input-placeholder,
+textarea:-ms-input-placeholder {
+  color: #94a3b8 !important;
+  opacity: 0.38 !important;
+  font-weight: 400 !important;
+  font-style: italic;
+  font-size: 0.94em;
+}
+
 .check { display: flex; align-items: flex-start; gap: 12px; min-height: 44px; }
 .check input { width: 22px; height: 22px; flex-shrink: 0; margin-top: 2px; accent-color: var(--primary); }
 .hp { position: absolute; left: -9999px; height: 0; overflow: hidden; }

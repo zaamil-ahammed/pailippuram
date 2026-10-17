@@ -108,7 +108,9 @@ export default function AdminList() {
         </form>
       </PageHeader>
       <main className="body">
-        <Link className="btn dark big" href={`/admin/${section}/new`}>+ Add new {cfg.singular}</Link>
+        {section !== 'bus' && (
+          <Link className="btn dark big" href={`/admin/${section}/new`}>+ Add new {cfg.singular}</Link>
+        )}
         <div className="chips">
           {activeFilters.map((f) => (
             <button key={f} type="button" className={`chip ${filter === f ? 'on' : ''}`} onClick={() => setFilter(f)}>{f}</button>

@@ -103,26 +103,6 @@ const MENUS = [
     areaPlaceholder: 'e.g. Pailippuram Center / Kizhakkumuri',
   },
   {
-    type: 'bus',
-    label: 'Bus Timing',
-    ml: 'ബസ് സമയം',
-    icon: '🚌',
-    backHref: '/bus',
-    backLabel: 'Bus Timing',
-    desc: 'Add or update local private or KSRTC bus routes and departure timings.',
-    chipsTitle: 'Bus Type / ബസ് ഇനം',
-    chips: [
-      { id: 'Ordinary Bus · ഓർഡിനറി', label: '🚌 Ordinary Bus' },
-      { id: 'Limited Stop (LS) · ലിമിറ്റഡ് സ്റ്റോപ്പ്', label: '⚡ Limited Stop (LS)' },
-      { id: 'Fast Passenger · ഫാസ്റ്റ്', label: '🚀 Fast Passenger' },
-      { id: 'KSRTC · കെ.എസ്.ആർ.ടി.സി', label: '🔴 KSRTC' },
-    ],
-    nameLabel: 'Route (From - To) / റൂട്ട്',
-    namePlaceholder: 'e.g. Valanchery - Tirur (via Pailippuram)',
-    areaLabel: 'Main Stops / Via / പ്രധാന സ്റ്റോപ്പുകൾ',
-    areaPlaceholder: 'e.g. Via Hospital, Pailippuram Stand, Puthanathani',
-  },
-  {
     type: 'contact',
     label: 'Important Contact',
     ml: 'പ്രധാന നമ്പറുകൾ',
@@ -233,11 +213,6 @@ function ShareFormInner() {
   const [age, setAge] = useState('');
   const [emergencyReady, setEmergencyReady] = useState(true);
 
-  // Bus specific
-  const [busName, setBusName] = useState('');
-  const [departureTimes, setDepartureTimes] = useState('');
-  const [direction, setDirection] = useState('');
-
   // Announcement specific
   const [eventDate, setEventDate] = useState('');
   const [organizedBy, setOrganizedBy] = useState('');
@@ -324,15 +299,6 @@ function ShareFormInner() {
         `Blood Group: ${group}`,
         age.trim() && `Age: ${age.trim()}`,
         emergencyReady && `Emergency calls: Ready / അടിയന്തിര ആവശ്യത്തിന് വിളിക്കാം`,
-        details.trim() && `Notes: ${details.trim()}`,
-      ].filter(Boolean);
-      structuredDesc = parts.join('\n');
-    } else if (type === 'bus') {
-      const parts = [
-        `Bus Type: ${selectedChip || 'Ordinary'}`,
-        busName.trim() && `Bus Name: ${busName.trim()}`,
-        direction.trim() && `Direction / Towards: ${direction.trim()}`,
-        departureTimes.trim() && `Times: ${departureTimes.trim()}`,
         details.trim() && `Notes: ${details.trim()}`,
       ].filter(Boolean);
       structuredDesc = parts.join('\n');
@@ -425,7 +391,6 @@ function ShareFormInner() {
                 setDetails('');
                 setVehicleModel('');
                 setWorkingHours('');
-                setDepartureTimes('');
               }}
             >
               + Share another listing · മറ്റൊന്ന് ചേർക്കുക
@@ -687,44 +652,6 @@ function ShareFormInner() {
           </>
         )}
 
-        {/* BUS EXTRAS */}
-        {type === 'bus' && (
-          <>
-            <div className="field">
-              <label htmlFor="bus-name">Bus Name / ബസിന്റെ പേര് (optional)</label>
-              <input
-                id="bus-name"
-                type="text"
-                maxLength={60}
-                placeholder="e.g. Victory, Al-Ameen, Rajadhani"
-                value={busName}
-                onChange={(e) => setBusName(e.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="bus-dir">Direction / എങ്ങോട്ടേക്കുള്ള ബസ് (optional)</label>
-              <input
-                id="bus-dir"
-                type="text"
-                maxLength={60}
-                placeholder="e.g. Towards Tirur / Towards Valanchery"
-                value={direction}
-                onChange={(e) => setDirection(e.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="bus-times">Departure Times / പുറപ്പെടുന്ന സമയം *</label>
-              <textarea
-                id="bus-times"
-                maxLength={600}
-                placeholder="e.g.&#10;07:15 AM&#10;08:30 AM&#10;11:45 AM&#10;02:15 PM&#10;05:40 PM"
-                value={departureTimes}
-                onChange={(e) => setDepartureTimes(e.target.value)}
-              />
-            </div>
-          </>
-        )}
-
         {/* ANNOUNCEMENT EXTRAS */}
         {type === 'announcement' && (
           <>
@@ -752,24 +679,22 @@ function ShareFormInner() {
         )}
 
         {/* 5. Contact Phone Number (Public) */}
-        {type !== 'bus' && (
-          <div className="field">
-            <label htmlFor="form-phone">
-              Phone Number to Show / വിളിക്കേണ്ട നമ്പർ {type !== 'announcement' ? '*' : '(optional)'}
-            </label>
-            <input
-              id="form-phone"
-              type="tel"
-              maxLength={20}
-              placeholder="e.g. 98470 00000"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-          </div>
-        )}
+        <div className="field">
+          <label htmlFor="form-phone">
+            Phone Number to Show / വിളിക്കേണ്ട നമ്പർ {type !== 'announcement' ? '*' : '(optional)'}
+          </label>
+          <input
+            id="form-phone"
+            type="tel"
+            maxLength={20}
+            placeholder="e.g. 98470 00000"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        </div>
 
         {/* WhatsApp Number (optional) */}
-        {type !== 'donor' && type !== 'bus' && (
+        {type !== 'donor' && (
           <div className="field">
             <label htmlFor="form-wa">
               WhatsApp Number / വാട്സാപ്പ് നമ്പർ <span className="muted small">(optional, if different)</span>
