@@ -272,6 +272,7 @@ function ShareFormInner() {
       const parts = [
         `Vehicle Type: ${selectedChip || 'Transport'}`,
         vehicleModel.trim() && `Vehicle Model / No: ${vehicleModel.trim()}`,
+        photoUrl.trim() && `Photo: ${photoUrl.trim()}`,
         is24Hours && `Service Availability: 24 Hours / 24 മണിക്കൂറും ലഭ്യമാണ്`,
         whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
         details.trim() && `Details: ${details.trim()}`,
@@ -301,6 +302,7 @@ function ShareFormInner() {
       const parts = [
         `Blood Group: ${group}`,
         age.trim() && `Age: ${age.trim()}`,
+        photoUrl.trim() && `Photo: ${photoUrl.trim()}`,
         emergencyReady && `Emergency calls: Ready / അടിയന്തിര ആവശ്യത്തിന് വിളിക്കാം`,
         details.trim() && `Notes: ${details.trim()}`,
       ].filter(Boolean);
@@ -572,6 +574,11 @@ function ShareFormInner() {
                 onChange={(e) => setVehicleModel(e.target.value)}
               />
             </div>
+            <ImageUploadField
+              value={photoUrl}
+              onChange={setPhotoUrl}
+              label="Vehicle or Driver Photo / ചിത്രം (optional)"
+            />
             <div className="check" style={{ marginTop: 4 }}>
               <input
                 id="is-24h"
@@ -650,6 +657,11 @@ function ShareFormInner() {
                 onChange={(e) => setAge(e.target.value)}
               />
             </div>
+            <ImageUploadField
+              value={photoUrl}
+              onChange={setPhotoUrl}
+              label="Donor Photo / രക്തദാതാവിന്റെ ചിത്രം (optional)"
+            />
             <div className="check" style={{ marginTop: 4 }}>
               <input
                 id="donor-em"

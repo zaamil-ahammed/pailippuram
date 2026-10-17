@@ -8,11 +8,11 @@ import PersonAvatar from './PersonAvatar';
 export default function ListingCard({ row }) {
   const [copied, setCopied] = useState(false);
   const wa = whatsappLink(row.whatsapp || row.phone);
-  const isWorkerOrPerson = row.kind === 'worker' || Boolean(row.photo_url);
+  const isAvatarVisible = row.kind === 'worker' || row.kind === 'transport' || Boolean(row.photo_url);
 
   const handleShare = async () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const pathname = typeof window !== 'undefined' ? window.location.pathname : (row.kind === 'worker' ? '/workers' : '/shops');
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : (row.kind === 'worker' ? '/workers' : (row.kind === 'transport' ? '/transport' : '/shops'));
     const directUrl = `${origin}${pathname}?id=${row.id}#item-${row.id}`;
 
     await shareServiceOrApp({
@@ -28,12 +28,12 @@ export default function ListingCard({ row }) {
   return (
     <article className="card" id={`item-${row.id}`}>
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-        {isWorkerOrPerson && (
+        {isAvatarVisible && (
           <PersonAvatar
             src={row.photo_url}
             alt={row.title}
             category={row.categories?.name || row.title}
-            kind="worker"
+            kind={row.kind || 'worker'}
             size={72}
           />
         )}

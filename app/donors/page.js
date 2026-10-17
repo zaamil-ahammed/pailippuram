@@ -6,6 +6,7 @@ import { formatDate } from '../../lib/supabase';
 import { BLOOD_GROUPS } from '../../lib/sections';
 import { useRows } from '../../lib/useRows';
 import { shareServiceOrApp } from '../../lib/share';
+import PersonAvatar from '../../components/PersonAvatar';
 
 export default function Donors() {
   const [group, setGroup] = useState('');
@@ -60,14 +61,25 @@ export default function Donors() {
         {!loading && !error && rows.length === 0 ? <p className="muted">No donors found for this group.</p> : null}
         {rows.map((d) => (
           <article key={d.id} className="card">
-            <div className="cardhead">
-              <div>
-                <h3>{d.name}</h3>
-                <p className="muted">{d.area}</p>
+            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+              <PersonAvatar
+                src={d.photo_url}
+                alt={d.name}
+                category={d.blood_group}
+                kind="donor"
+                size={70}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="cardhead">
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <h3 style={{ wordBreak: 'break-word' }}>{d.name}</h3>
+                    <p className="muted" style={{ fontSize: 13.5 }}>{d.area}</p>
+                  </div>
+                  <span className="group" style={{ flexShrink: 0 }}>{d.blood_group}</span>
+                </div>
+                {d.verified_at ? <p className="muted small" style={{ marginTop: 4 }}>Checked {formatDate(d.verified_at)}</p> : null}
               </div>
-              <span className="group">{d.blood_group}</span>
             </div>
-            {d.verified_at ? <p className="muted small">Checked {formatDate(d.verified_at)}</p> : null}
             <div className="btnrow">
               {d.phone ? <a className="btn dark" href={`tel:${d.phone}`}>Call {d.phone}</a> : null}
               {d.phone ? (

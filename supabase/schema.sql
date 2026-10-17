@@ -57,6 +57,7 @@ create table if not exists bus_routes (
 create table if not exists donors (
   id uuid primary key default gen_random_uuid(),
   name text not null check (char_length(name) between 2 and 80),
+  photo_url text,
   blood_group text not null check (blood_group in ('A+','A-','B+','B-','AB+','AB-','O+','O-')),
   phone text check (char_length(phone) <= 20),
   area text check (char_length(area) <= 80),

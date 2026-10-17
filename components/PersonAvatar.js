@@ -1,10 +1,107 @@
 'use client';
 import { useState } from 'react';
 
-// Maps category or trade names to a tailored SVG icon and color scheme
+// Maps category, kind or trade names to a tailored SVG icon and color scheme
 function getCategoryIcon(category = '', kind = 'worker') {
   const c = category.toLowerCase();
 
+  // 1. BLOOD DONOR
+  if (kind === 'donor' || c.includes('donor') || c.includes('blood') || /^[aböo][+-]$/i.test(category.trim())) {
+    return {
+      bg: '#fff1f2',
+      color: '#e11d48',
+      border: '#fecdd3',
+      label: category ? category.toUpperCase() : 'DONOR',
+      svg: (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 21.5c-3.6 0-6.5-2.9-6.5-6.5 0-3.2 3.8-7.8 5.7-9.9.4-.5 1.2-.5 1.6 0 1.9 2.1 5.7 6.7 5.7 9.9 0 3.6-2.9 6.5-6.5 6.5z" />
+        </svg>
+      ),
+    };
+  }
+
+  // 2. TRANSPORTATION & VEHICLES
+  if (kind === 'transport' || c.includes('auto') || c.includes('taxi') || c.includes('jcb') || c.includes('driver') || c.includes('transport') || c.includes('വാഹന')) {
+    if (c.includes('ambulance') || c.includes('ആംബുലൻസ്')) {
+      return {
+        bg: '#fef2f2',
+        color: '#dc2626',
+        border: '#fca5a5',
+        svg: (
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 10H6" /><path d="M8 8v4" /><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+            <circle cx="7" cy="17" r="2" /><path d="M9 17h6" /><circle cx="17" cy="17" r="2" />
+          </svg>
+        ),
+      };
+    }
+    if (c.includes('jcb') || c.includes('earthmover') || c.includes('ജെസിബി') || c.includes('tipper') || c.includes('ടിപ്പർ')) {
+      return {
+        bg: '#fefce8',
+        color: '#ca8a04',
+        border: '#fde047',
+        svg: (
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 6v6h4l3 3v2h-3" />
+            <path d="M2 17h1" />
+            <circle cx="6" cy="17" r="3" />
+            <path d="M9 17h6" />
+            <circle cx="18" cy="17" r="2" />
+            <path d="M7 14h6" />
+            <path d="M4 11V6a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v8" />
+          </svg>
+        ),
+      };
+    }
+    if (c.includes('auto') || c.includes('ഓട്ടോ')) {
+      return {
+        bg: '#fef3c7',
+        color: '#d97706',
+        border: '#fde68a',
+        svg: (
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 16h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3L13 4H7L4 9v5a2 2 0 0 0 1 2z" />
+            <circle cx="7" cy="17" r="2" />
+            <circle cx="17" cy="17" r="2" />
+            <path d="M9 9h6" />
+            <path d="M12 9v4" />
+          </svg>
+        ),
+      };
+    }
+    if (c.includes('pickup') || c.includes('goods') || c.includes('പിക്കപ്പ്') || c.includes('van') || c.includes('traveler') || c.includes('വാൻ')) {
+      return {
+        bg: '#f3e8ff',
+        color: '#7e22ce',
+        border: '#e9d5ff',
+        svg: (
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+            <rect width="18" height="11" x="3" y="5" rx="2" />
+            <path d="M17 16h2c.6 0 1-.4 1-1v-2" />
+            <circle cx="7" cy="17" r="2" />
+            <path d="M9 17h6" />
+            <circle cx="17" cy="17" r="2" />
+          </svg>
+        ),
+      };
+    }
+    // Standard taxi / car / transport default
+    return {
+      bg: '#f5f3ff',
+      color: '#6d28d9',
+      border: '#ddd6fe',
+      svg: (
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+          <circle cx="7" cy="17" r="2" />
+          <path d="M9 17h6" />
+          <circle cx="17" cy="17" r="2" />
+        </svg>
+      ),
+    };
+  }
+
+  // 3. PANCHAYATH LEADERSHIP
   if (kind === 'panchayath' || c.includes('president') || c.includes('secretary') || c.includes('bearer')) {
     return {
       bg: '#eff6ff',
@@ -39,6 +136,7 @@ function getCategoryIcon(category = '', kind = 'worker') {
     };
   }
 
+  // 4. NATIVE WORKERS
   if (c.includes('electric') || c.includes('ഇലക്ട്രി')) {
     return {
       bg: '#fffbeb',
@@ -143,7 +241,7 @@ function getCategoryIcon(category = '', kind = 'worker') {
     };
   }
 
-  // Default trade / worker persona
+  // Default persona
   return {
     bg: '#eff6ff',
     color: '#1e40af',
@@ -206,9 +304,15 @@ export default function PersonAvatar({ src, alt = 'Profile', category = '', kind
             justifyContent: 'center',
             width: '100%',
             height: '100%',
+            gap: 2,
           }}
         >
           {iconTheme.svg}
+          {iconTheme.label && (
+            <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.02em', lineHeight: 1 }}>
+              {iconTheme.label}
+            </span>
+          )}
         </div>
       )}
     </div>
