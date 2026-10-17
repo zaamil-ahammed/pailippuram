@@ -38,7 +38,7 @@ const MENUS = [
     icon: '🏪',
     backHref: '/shops',
     backLabel: 'Local Shops',
-    desc: 'List your shop, supermarket, bakery, pharmacy, or service center in Pailippuram.',
+    desc: 'List your shop, supermarket, bakery, pharmacy, or service center around Pailippuram.',
     chipsTitle: 'Shop Category / കടയുടെ വിഭാഗം',
     chips: [
       { id: 'Grocery / Supermarket · പലചരക്ക്', label: '🛒 Grocery / Supermarket' },

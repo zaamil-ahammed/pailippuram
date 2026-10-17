@@ -8,7 +8,7 @@ export default function Shops() {
       kind="business"
       title="Local shops"
       ml="കടകൾ"
-      intro="Supermarkets, pharmacies, bakeries, textiles, and local businesses in Pailippuram."
+      intro="Supermarkets, pharmacies, bakeries, textiles, and local businesses around Pailippuram."
       top={
         <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
           <Link

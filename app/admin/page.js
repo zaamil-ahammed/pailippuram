@@ -6,7 +6,7 @@ import { useAdmin } from '../../components/AdminGate';
 import { supabase, formatDate } from '../../lib/supabase';
 import { logAudit } from '../../lib/audit';
 import { useRows } from '../../lib/useRows';
-import { OUTDATED_DAYS, SECTIONS, SECTION_KEYS, SUBMISSION_LABEL, SUBMISSION_SECTION } from '../../lib/sections';
+import { OUTDATED_DAYS, SECTIONS, SECTION_KEYS, SUBMISSION_LABEL, SUBMISSION_SECTION, getSubmissionSection, getSubmissionLabel } from '../../lib/sections';
 
 function outdatedCutoff() {
   return new Date(Date.now() - OUTDATED_DAYS * 86400000).toISOString();
@@ -46,8 +46,17 @@ export default function AdminHome() {
 
   async function resolve(row, status, action) {
     setActionError('');
-    const { error } = await supabase.from('submissions').update({ status }).eq('id', row.id);
-    if (error) return setActionError('Could not save. Please try again.');
+    let nextStatus = status;
+    // Remote database submissions_status_check only allows 'pending', 'approved', 'rejected'
+    if (nextStatus === 'handled') {
+      nextStatus = 'approved';
+    }
+    let { error } = await supabase.from('submissions').update({ status: nextStatus }).eq('id', row.id);
+    if (error && error.message && error.message.includes('status_check')) {
+      const fallbackRes = await supabase.from('submissions').update({ status: 'approved' }).eq('id', row.id);
+      error = fallbackRes.error;
+    }
+    if (error) return setActionError(error.message || 'Could not save. Please try again.');
     await logAudit(user, { action, table: 'submissions', rowId: row.id, note: row.title });
     queue.reload();
   }
@@ -74,12 +83,13 @@ export default function AdminHome() {
         {actionError ? <p className="error">{actionError}</p> : null}
         {waiting.length === 0 && !queue.loading ? <p className="muted">Nothing is waiting. Nice.</p> : null}
         {waiting.map((r) => {
-          const sec = SUBMISSION_SECTION[r.type];
+          const sec = getSubmissionSection(r);
           const urgent = r.type === 'removal';
+          const label = getSubmissionLabel(r);
           return (
             <article key={r.id} className={`card ${urgent ? 'dark' : ''}`}>
               <div className="cardhead">
-                <span className={`pill ${urgent ? 'beige' : ''}`}>{SUBMISSION_LABEL[r.type]}</span>
+                <span className={`pill ${urgent ? 'beige' : ''}`}>{label}</span>
                 <span className="small">{formatDate(r.created_at)}</span>
               </div>
               <h3>{r.title}</h3>
