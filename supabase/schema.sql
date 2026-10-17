@@ -18,6 +18,7 @@ create table if not exists listings (
   kind text not null check (kind in ('contact', 'business', 'worker', 'transport')),
   title text not null check (char_length(title) between 2 and 120),
   category_id int references categories(id) on delete set null,
+  photo_url text,
   description text check (char_length(description) <= 600),
   phone text check (char_length(phone) <= 20),
   whatsapp text check (char_length(whatsapp) <= 20),
@@ -73,6 +74,7 @@ create table if not exists panchayath_items (
   id uuid primary key default gen_random_uuid(),
   section text not null check (section in ('bearer', 'ward', 'service', 'notice')),
   title text not null check (char_length(title) between 2 and 120),
+  photo_url text,
   detail text check (char_length(detail) <= 1000),
   extra text check (char_length(extra) <= 80), -- a phone number or a date
   status text not null default 'approved' check (status in ('approved', 'hidden')),
@@ -87,6 +89,7 @@ create table if not exists submissions (
   id uuid primary key default gen_random_uuid(),
   type text not null check (type in ('business','contact','worker','transport','announcement','donor','bus','other','correction','removal')),
   title text not null check (char_length(title) between 2 and 120),
+  photo_url text,
   description text check (char_length(description) <= 1500),
   phone text check (char_length(phone) <= 20),
   area text check (char_length(area) <= 80),

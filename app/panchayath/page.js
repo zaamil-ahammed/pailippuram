@@ -3,6 +3,7 @@ import PageHeader from '../../components/PageHeader';
 import { formatDate } from '../../lib/supabase';
 import { PANCHAYATH_SECTIONS } from '../../lib/sections';
 import { useRows } from '../../lib/useRows';
+import PersonAvatar from '../../components/PersonAvatar';
 
 const HEADINGS = {
   bearer: 'Office bearers',
@@ -37,15 +38,31 @@ export default function Panchayath() {
         {PANCHAYATH_SECTIONS.map(({ value }) => {
           const items = rows.filter((r) => r.section === value);
           if (items.length === 0) return null;
+          const isPersonSection = value === 'bearer' || value === 'ward';
           return (
             <section key={value} className="stack">
               <h2>{HEADINGS[value]}</h2>
               {items.map((r) => (
                 <article key={r.id} className="card">
-                  <h3>{r.title}</h3>
-                  {r.detail ? <p>{r.detail}</p> : null}
-                  <Extra value={r.extra} />
-                  {r.verified_at ? <p className="muted small">Checked {formatDate(r.verified_at)}</p> : null}
+                  <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                    {(isPersonSection || r.photo_url) && (
+                      <PersonAvatar
+                        src={r.photo_url}
+                        alt={r.title}
+                        category={value === 'bearer' ? 'Office bearer' : 'Ward member'}
+                        kind="panchayath"
+                        size={72}
+                      />
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h3>{r.title}</h3>
+                      {r.detail ? <p style={{ marginTop: 4 }}>{r.detail}</p> : null}
+                      <div style={{ marginTop: 8 }}>
+                        <Extra value={r.extra} />
+                      </div>
+                      {r.verified_at ? <p className="muted small" style={{ marginTop: 6 }}>Checked {formatDate(r.verified_at)}</p> : null}
+                    </div>
+                  </div>
                 </article>
               ))}
             </section>

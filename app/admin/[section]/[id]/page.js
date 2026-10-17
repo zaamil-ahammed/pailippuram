@@ -7,6 +7,7 @@ import { supabase } from '../../../../lib/supabase';
 import { logAudit } from '../../../../lib/audit';
 import { useRows } from '../../../../lib/useRows';
 import { SECTIONS } from '../../../../lib/sections';
+import ImageUploadField from '../../../../components/ImageUploadField';
 
 // One form for every section. The fields come from lib/sections.js.
 export default function AdminEdit() {
@@ -385,6 +386,12 @@ export default function AdminEdit() {
                       </div>
                     )}
                   </div>
+                ) : f.type === 'image' ? (
+                  <ImageUploadField
+                    value={values[f.name] || ''}
+                    label={`${f.label}${f.required ? ' *' : ''}`}
+                    onChange={(val) => setValues((v) => ({ ...v, [f.name]: val }))}
+                  />
                 ) : (
                   <input id={fid} type={f.type} value={values[f.name] || ''} onChange={set(f.name)} />
                 )}

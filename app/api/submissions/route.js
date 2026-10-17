@@ -152,7 +152,7 @@ export async function POST(req) {
     }
 
     // Direct form submission flow
-    const { type, title, description, phone, area, submitter_contact, consent } = body;
+    const { type, title, description, phone, area, submitter_contact, consent, photo_url } = body;
 
     if (!title || title.trim().length < 2) {
       return NextResponse.json({ ok: false, error: 'Please provide a valid title.' }, { status: 400 });
@@ -169,6 +169,7 @@ export async function POST(req) {
         area: area ? area.trim() : null,
         submitter_contact: submitter_contact ? submitter_contact.trim() : null,
         consent: Boolean(consent),
+        photo_url: photo_url ? photo_url.trim() : null,
         created_at: new Date().toISOString(),
       }).catch((err) => console.error('[Async Email Error]', err));
       return NextResponse.json({ ok: true, mocked: true });
@@ -189,6 +190,7 @@ export async function POST(req) {
       area: area ? area.trim() : null,
       submitter_contact: submitter_contact ? submitter_contact.trim() : null,
       consent: Boolean(consent),
+      photo_url: photo_url ? photo_url.trim() : null,
       status: 'pending',
     };
 
@@ -198,6 +200,13 @@ export async function POST(req) {
     // which causes PostgreSQL to evaluate the SELECT policy on the returned row and throws:
     // "new row violates row-level security policy for table 'submissions'".
     let { error } = await supabase.from('submissions').insert(row);
+
+    // If remote DB does not yet have photo_url column
+    if (error && error.message && error.message.includes('photo_url')) {
+      const { photo_url: _discard, ...cleanedRow } = row;
+      const retryRes = await supabase.from('submissions').insert(cleanedRow);
+      error = retryRes.error;
+    }
 
     // If the remote database has an older check constraint on `type` (e.g. only business, contact, announcement, correction)
     if (error && error.message && error.message.includes('submissions_type_check')) {

@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import PageHeader from '../../components/PageHeader';
 import { sendSubmission } from '../../lib/submit';
 import { BLOOD_GROUPS } from '../../lib/sections';
+import ImageUploadField from '../../components/ImageUploadField';
 
 const MENUS = [
   {
@@ -207,6 +208,7 @@ function ShareFormInner() {
 
   // Worker specific
   const [experience, setExperience] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
 
   // Donor specific
   const [bloodGroup, setBloodGroup] = useState('O+');
@@ -288,6 +290,7 @@ function ShareFormInner() {
       const parts = [
         `Trade / Skill: ${selectedChip || 'Worker'}`,
         experience.trim() && `Work details: ${experience.trim()}`,
+        photoUrl.trim() && `Photo: ${photoUrl.trim()}`,
         whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
         details.trim() && `Extra details: ${details.trim()}`,
       ].filter(Boolean);
@@ -329,9 +332,10 @@ function ShareFormInner() {
     const resError = await sendSubmission({
       type,
       title: finalTitle,
-      description: structuredDesc.slice(0, 1500) || null,
+      description: structuredDesc.slice(1500) ? structuredDesc : (structuredDesc || null),
       phone: phone.trim() || null,
       area: area.trim() || null,
+      photo_url: photoUrl.trim() || null,
       submitter_contact: submitterContact.trim() || null,
       consent,
     });
@@ -391,6 +395,7 @@ function ShareFormInner() {
                 setDetails('');
                 setVehicleModel('');
                 setWorkingHours('');
+                setPhotoUrl('');
               }}
             >
               + Share another listing · മറ്റൊന്ന് ചേർക്കുക
@@ -611,17 +616,24 @@ function ShareFormInner() {
 
         {/* WORKER EXTRAS */}
         {type === 'worker' && (
-          <div className="field">
-            <label htmlFor="worker-exp">Specialty or Work Types / പ്രത്യേകതകൾ (optional)</label>
-            <input
-              id="worker-exp"
-              type="text"
-              maxLength={120}
-              placeholder="e.g. House wiring, motor pump repair, tile laying, daily / contract"
-              value={experience}
-              onChange={(e) => setExperience(e.target.value)}
+          <>
+            <div className="field">
+              <label htmlFor="worker-exp">Specialty or Work Types / പ്രത്യേകതകൾ (optional)</label>
+              <input
+                id="worker-exp"
+                type="text"
+                maxLength={120}
+                placeholder="e.g. House wiring, motor pump repair, tile laying, daily / contract"
+                value={experience}
+                onChange={(e) => setExperience(e.target.value)}
+              />
+            </div>
+            <ImageUploadField
+              value={photoUrl}
+              onChange={setPhotoUrl}
+              label="Profile Photo / തൊഴിലാളിയുടെ ഫോട്ടോ (optional)"
             />
-          </div>
+          </>
         )}
 
         {/* DONOR EXTRAS */}
