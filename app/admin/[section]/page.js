@@ -31,7 +31,7 @@ export default function AdminList() {
       let q = s.from(cfg.table).select(cfg.select).order('created_at', { ascending: false });
       for (const [k, v] of Object.entries(cfg.match)) q = q.eq(k, v);
       if (filter === 'Live') q = q.eq('status', 'approved');
-      if (filter === 'Hidden') q = q.eq('status', 'hidden');
+      if (filter === 'Hidden') q = q.or('status.eq.hidden,status.eq.archived');
       if (filter === 'Outdated') {
         const cutoff = new Date(Date.now() - OUTDATED_DAYS * 86400000).toISOString();
         q = q.eq('status', 'approved').or(`verified_at.is.null,verified_at.lt.${cutoff}`);
@@ -50,10 +50,16 @@ export default function AdminList() {
 
   async function toggleHidden(row) {
     setActionError('');
-    const status = row.status === 'approved' ? 'hidden' : 'approved';
-    const { error: err } = await supabase.from(cfg.table).update({ status, updated_by: user.id }).eq('id', row.id);
-    if (err) return setActionError('Could not save. Please try again.');
-    await logAudit(user, { action: status === 'hidden' ? 'hide' : 'show', table: cfg.table, rowId: row.id, note: cfg.title(row) });
+    const isCurrentlyLive = row.status === 'approved';
+    const nextStatus = isCurrentlyLive ? (cfg.table === 'listings' ? 'archived' : 'hidden') : 'approved';
+    let { error: err } = await supabase.from(cfg.table).update({ status: nextStatus }).eq('id', row.id);
+    if (err && err.message && err.message.includes('status_check')) {
+      const altStatus = nextStatus === 'hidden' ? 'archived' : 'hidden';
+      const altRes = await supabase.from(cfg.table).update({ status: altStatus }).eq('id', row.id);
+      err = altRes.error;
+    }
+    if (err) return setActionError(err.message || 'Could not save. Please try again.');
+    await logAudit(user, { action: isCurrentlyLive ? 'hide' : 'show', table: cfg.table, rowId: row.id, note: cfg.title(row) });
     reload();
   }
 
@@ -96,7 +102,7 @@ export default function AdminList() {
                 <h3>{cfg.title(r)}</h3>
                 <p className="muted">{cfg.subtitle(r)}</p>
               </div>
-              <span className={`pill ${r.status === 'hidden' ? 'line' : ''}`}>{r.status === 'hidden' ? 'Hidden' : 'Live'}</span>
+              <span className={`pill ${r.status !== 'approved' ? 'line' : ''}`}>{r.status !== 'approved' ? 'Hidden' : 'Live'}</span>
             </div>
             <p className="muted small">
               {cfg.verify ? (r.verified_at ? `Verified ${formatDate(r.verified_at)}` : 'Never verified') : ''}
@@ -104,7 +110,7 @@ export default function AdminList() {
             </p>
             <div className="btnrow">
               <Link className="btn dark" href={`/admin/${section}/${r.id}`}>Edit</Link>
-              <button type="button" className="btn" onClick={() => toggleHidden(r)}>{r.status === 'hidden' ? 'Show' : 'Hide'}</button>
+              <button type="button" className="btn" onClick={() => toggleHidden(r)}>{r.status !== 'approved' ? 'Show' : 'Hide'}</button>
               <button
                 type="button"
                 className="btn"

@@ -77,30 +77,63 @@ export default function AdminEdit() {
       }
       payload[f.name] = v;
     }
-    payload.status = status;
-    payload.updated_by = user.id;
+    let effectiveStatus = status;
+    if (cfg.table === 'listings' && status === 'hidden') {
+      effectiveStatus = 'archived';
+    }
+    payload.status = effectiveStatus;
+    if (cfg.table === 'announcements' && !payload.body) {
+      payload.body = payload.title || 'Details';
+    }
+    if (user?.id) payload.updated_by = user.id;
     if (cfg.verify && verify) payload.verified_at = new Date().toISOString();
 
     setBusy(true);
     let rowId = id;
     let error;
-    if (isNew) {
-      const res = await supabase.from(cfg.table).insert({ ...payload, ...cfg.match }).select('id').single();
-      error = res.error;
-      rowId = res.data?.id;
-      if (error && cfg.match?.kind === 'transport') {
-        const fallbackRes = await supabase.from(cfg.table).insert({ ...payload, kind: 'worker' }).select('id').single();
-        if (!fallbackRes.error) {
-          error = null;
-          rowId = fallbackRes.data?.id;
+
+    async function executeSave(data) {
+      if (isNew) {
+        let res = await supabase.from(cfg.table).insert({ ...data, ...cfg.match }).select('id').single();
+        if (res.error && res.error.message && res.error.message.includes('updated_by')) {
+          const { updated_by, ...cleaned } = data;
+          res = await supabase.from(cfg.table).insert({ ...cleaned, ...cfg.match }).select('id').single();
         }
+        if (res.error && res.error.message && res.error.message.includes('status_check')) {
+          const altStatus = data.status === 'hidden' ? 'archived' : 'hidden';
+          const { updated_by, ...cleaned } = data;
+          res = await supabase.from(cfg.table).insert({ ...cleaned, ...cfg.match, status: altStatus }).select('id').single();
+        }
+        if (res.error && cfg.match?.kind === 'transport') {
+          const { updated_by, ...cleaned } = data;
+          const fallbackRes = await supabase.from(cfg.table).insert({ ...cleaned, kind: 'worker' }).select('id').single();
+          if (!fallbackRes.error) {
+            return { error: null, rowId: fallbackRes.data?.id };
+          }
+        }
+        return { error: res.error, rowId: res.data?.id };
+      } else {
+        let res = await supabase.from(cfg.table).update(data).eq('id', id);
+        if (res.error && res.error.message && res.error.message.includes('updated_by')) {
+          const { updated_by, ...cleaned } = data;
+          res = await supabase.from(cfg.table).update(cleaned).eq('id', id);
+        }
+        if (res.error && res.error.message && res.error.message.includes('status_check')) {
+          const altStatus = data.status === 'hidden' ? 'archived' : 'hidden';
+          const { updated_by, ...cleaned } = data;
+          res = await supabase.from(cfg.table).update({ ...cleaned, status: altStatus }).eq('id', id);
+        }
+        return { error: res.error, rowId: id };
       }
-    } else {
-      ({ error } = await supabase.from(cfg.table).update(payload).eq('id', id));
     }
+
+    const result = await executeSave(payload);
+    error = result.error;
+    rowId = result.rowId;
+
     if (error) {
       setBusy(false);
-      return setMsg('Could not save. Please check the fields and try again.');
+      return setMsg(error.message || 'Could not save. Please check the fields and try again.');
     }
 
     const changes = {};
