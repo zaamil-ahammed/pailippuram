@@ -6,9 +6,10 @@ export default function Workers() {
   return (
     <ListingsView
       kind="worker"
-      title="Native workers"
-      ml="തൊഴിലാളികൾ"
-      intro="Builders, painters, electricians, plumbers, carpenters, and skilled workers in Pailippuram."
+      sectionKey="workers"
+      title="Native Workers"
+      ml="തൊഴിലാളികൾ & വിദഗ്ദ്ധർ"
+      intro="People whom residents hire to perform a service: electricians, plumbers, carpenters, painters, masons, mechanics, technicians, tutors, and daily labourers in Pailippuram."
       top={
         <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
           <Link

@@ -134,7 +134,10 @@ const TILES = [
 export default function Home() {
   const router = useRouter();
   const [q, setQ] = useState('');
-  const news = useRows((s) => s.from('announcements').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(3), []);
+  const news = useRows(
+    (s) => s.from('announcements').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(3),
+    []
+  );
 
   return (
     <div className="page">
@@ -154,14 +157,22 @@ export default function Home() {
           }}
         >
           <label htmlFor="hq" className="hp">Search</label>
-          <input id="hq" type="search" placeholder="Search shops and services" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input
+            id="hq"
+            type="search"
+            placeholder="Search shops and services"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
         </form>
       </header>
+
       <main className="body">
         {!isConfigured ? (
           <p className="error">The database is not connected yet. See the README, step 3.</p>
         ) : null}
 
+        {/* The classic 2-column menu tiles */}
         <div className="grid2" style={{ gap: 10 }}>
           {TILES.map((t) => (
             <Link
@@ -203,7 +214,13 @@ export default function Home() {
             </Link>
           ))}
         </div>
-        <Link href="/share" className="tile dash" style={{ minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+
+        {/* Share Information Action Tile */}
+        <Link
+          href="/share"
+          className="tile dash"
+          style={{ minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}
+        >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="16" />
@@ -212,6 +229,7 @@ export default function Home() {
           <span style={{ fontWeight: 700 }}>Share information · വിവരം പങ്കിടുക</span>
         </Link>
 
+        {/* Latest Announcements */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
           <h2 style={{ margin: 0 }}>Latest announcements</h2>
           <Link href="/announcements" style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
@@ -227,6 +245,7 @@ export default function Home() {
           </Link>
         ))}
 
+        {/* Village Trust Note */}
         <div className="note">
           <strong>Checked by people from the village.</strong> Each listing shows when it was last checked. If something
           is wrong, <Link href="/correction" style={{ textDecoration: 'underline' }}>request a correction</Link>.

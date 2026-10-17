@@ -3,25 +3,29 @@ import Link from 'next/link';
 import ListingsView from '../../components/ListingsView';
 
 const EMERGENCY = [
-  { n: '112', label: 'Emergency' },
+  { n: '112', label: 'All Emergency' },
   { n: '108', label: 'Ambulance' },
   { n: '100', label: 'Police' },
-  { n: '101', label: 'Fire' },
+  { n: '101', label: 'Fire & Rescue' },
+  { n: '1091', label: 'Women Helpline' },
+  { n: '1098', label: 'Child Helpline' },
 ];
 
 export default function Contacts() {
   return (
     <ListingsView
       kind="contact"
-      title="Important contacts"
+      sectionKey="contacts"
+      title="Important Contacts"
       ml="പ്രധാന നമ്പറുകൾ"
+      intro="Emergency services, hospitals, clinics, police, fire force, KSEB, and local public offices in Pailippuram."
       top={
         <>
-          <div className="grid2">
+          <div className="grid2" style={{ gap: 8, marginBottom: 6 }}>
             {EMERGENCY.map((e) => (
-              <a key={e.n} href={`tel:${e.n}`} className="tile sage">
-                <span className="count">{e.n}</span>
-                <span>{e.label}</span>
+              <a key={e.n} href={`tel:${e.n}`} className="tile sage" style={{ minHeight: 60, padding: '8px 12px' }}>
+                <span className="count" style={{ fontSize: 18 }}>{e.n}</span>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{e.label}</span>
               </a>
             ))}
           </div>
