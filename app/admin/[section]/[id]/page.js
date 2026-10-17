@@ -33,7 +33,12 @@ export default function AdminEdit() {
   const [catBusy, setCatBusy] = useState(false);
 
   const cats = useRows(
-    (s) => s.from('categories').select('*').eq('kind', cfg?.match?.kind || 'none').order('name'),
+    (s) => {
+      if (section === 'shops') {
+        return s.from('categories').select('*').or('kind.eq.business,kind.eq.shop').order('name');
+      }
+      return s.from('categories').select('*').eq('kind', cfg?.match?.kind || 'none').order('name');
+    },
     [section]
   );
 
@@ -308,7 +313,8 @@ export default function AdminEdit() {
             }
           }
         }
-        return { error: res.error, rowId: res.data?.id };
+        const createdId = res.data?.id || (Array.isArray(res.data) ? res.data[0]?.id : null);
+        return { error: res.error, rowId: createdId };
       } else {
         let updateData = { ...data };
         if (updateData.description) {

@@ -17,7 +17,7 @@ export default function About() {
         <section className="card">
           <h2>About Us</h2>
           <p>
-            <strong>Nammude Pailippuram</strong> is a digital community platform created to connect the people of Pailippuram, Chembra, Palakkad, Kerala.
+            <strong>Nammude Pailippuram</strong> is a digital community platform created to connect the people of Pailippuram, Chembra, Palakkad, Kerala by Victory arts & sports club, Pailippuram
           </p>
           <p>
             Our aim is to bring useful local information, businesses, skilled workers, transportation services, and public information together in one convenient place.

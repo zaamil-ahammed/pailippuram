@@ -40,7 +40,7 @@ export default function ListingsView({
   }, []);
 
   // Fetch all approved listings for this kind
-  const { rows: allRows, loading, error } = useRows(
+  const { rows: rawRows, loading, error } = useRows(
     (s) => {
       let q = s.from('listings').select('*, categories(name, name_ml)').eq('status', 'approved').order('title');
       if (kind === 'transport') {
@@ -49,8 +49,8 @@ export default function ListingsView({
         );
       } else if (kind === 'worker') {
         q = q.or('kind.eq.worker,description.ilike.%[WORKER]%');
-      } else if (kind === 'business') {
-        q = q.eq('kind', 'business').not('description', 'ilike', '%[WORKER]%').not('description', 'ilike', '%[TRANSPORT]%');
+      } else if (kind === 'business' || kind === 'shop') {
+        q = q.or('kind.eq.business,kind.eq.shop');
       } else {
         q = q.eq('kind', kind);
       }
@@ -59,8 +59,31 @@ export default function ListingsView({
     [kind]
   );
 
+  // In-memory filter so null descriptions are never dropped by PostgREST
+  const allRows = useMemo(() => {
+    if (!rawRows) return [];
+    if (kind === 'business' || kind === 'shop') {
+      return rawRows.filter((r) => {
+        const d = (r.description || '').toLowerCase();
+        const k = (r.kind || '').toLowerCase();
+        if (k === 'worker' || d.includes('[worker]')) return false;
+        if (k === 'transport' || d.includes('[transport]')) return false;
+        return true;
+      });
+    }
+    return rawRows;
+  }, [rawRows, kind]);
+
   // Fetch registered DB categories
-  const cats = useRows((s) => s.from('categories').select('*').eq('kind', kind).order('name'), [kind]);
+  const cats = useRows(
+    (s) => {
+      if (kind === 'business' || kind === 'shop') {
+        return s.from('categories').select('*').or('kind.eq.business,kind.eq.shop').order('name');
+      }
+      return s.from('categories').select('*').eq('kind', kind).order('name');
+    },
+    [kind]
+  );
 
   // "only show categories with atleast one to show":
   // Gather all category candidates from taxonomy & DB, and filter to ONLY those with count >= 1

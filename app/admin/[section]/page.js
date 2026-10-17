@@ -41,13 +41,13 @@ export default function AdminList() {
       } else if (section === 'workers') {
         q = q.or('kind.eq.worker,description.ilike.%[WORKER]%');
       } else if (section === 'shops') {
-        q = q.eq('kind', 'business').not('description', 'ilike', '%[WORKER]%').not('description', 'ilike', '%[TRANSPORT]%');
+        q = q.or('kind.eq.business,kind.eq.shop');
       } else {
         for (const [k, v] of Object.entries(cfg.match)) q = q.eq(k, v);
       }
 
       if (isCategories) {
-        if (filter === 'Shops') q = q.eq('kind', 'business');
+        if (filter === 'Shops') q = q.or('kind.eq.business,kind.eq.shop');
         if (filter === 'Contacts') q = q.eq('kind', 'contact');
         if (filter === 'Workers') q = q.eq('kind', 'worker');
         if (filter === 'Transport') q = q.eq('kind', 'transport');
@@ -66,6 +66,20 @@ export default function AdminList() {
     },
     [section, filter, term, isCategories]
   );
+
+  const displayRows = useMemo(() => {
+    if (!rows) return [];
+    if (section === 'shops') {
+      return rows.filter((r) => {
+        const d = (r.description || '').toLowerCase();
+        const k = (r.kind || '').toLowerCase();
+        if (k === 'worker' || d.includes('[worker]')) return false;
+        if (k === 'transport' || d.includes('[transport]')) return false;
+        return true;
+      });
+    }
+    return rows;
+  }, [rows, section]);
 
   const [actionError, setActionError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
@@ -120,8 +134,8 @@ export default function AdminList() {
         {error ? <p className="error">{error}</p> : null}
         {actionError ? <p className="error">{actionError}</p> : null}
         {loading ? <p className="muted">Loading...</p> : null}
-        {!loading && !error && rows.length === 0 ? <p className="muted">Nothing here.</p> : null}
-        {rows.map((r) => {
+        {!loading && !error && displayRows.length === 0 ? <p className="muted">Nothing here.</p> : null}
+        {displayRows.map((r) => {
           const localPhoto = typeof window !== 'undefined' ? window.localStorage.getItem(`np_photo_${r.id}`) : null;
           const photoFromDesc = r.description?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim() || r.detail?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim();
           const effectivePhoto = r.photo_url || localPhoto || photoFromDesc || '';

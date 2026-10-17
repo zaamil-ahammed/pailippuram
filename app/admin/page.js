@@ -36,8 +36,8 @@ export default function AdminHome() {
           all = all.or('kind.eq.worker,description.ilike.%[WORKER]%');
           old = old.or('kind.eq.worker,description.ilike.%[WORKER]%');
         } else if (key === 'shops') {
-          all = all.eq('kind', 'business').not('description', 'ilike', '%[WORKER]%').not('description', 'ilike', '%[TRANSPORT]%');
-          old = old.eq('kind', 'business').not('description', 'ilike', '%[WORKER]%').not('description', 'ilike', '%[TRANSPORT]%');
+          all = all.or('kind.eq.business,kind.eq.shop');
+          old = old.or('kind.eq.business,kind.eq.shop');
         } else {
           for (const [k, v] of Object.entries(cfg.match)) {
             all = all.eq(k, v);
