@@ -404,7 +404,7 @@ function ShareFormInner() {
           </div>
           <h2 style={{ fontSize: 22, color: 'var(--ink)', marginBottom: 8 }}>Thank you! വിവരങ്ങൾ അയച്ചു</h2>
           <p className="muted" style={{ lineHeight: 1.5, marginBottom: 24 }}>
-            Your information for <strong>{activeMenu.label}</strong> has been received. A local admin from Pailippuram will verify it before it appears on the website.
+            Your information for <strong>{activeMenu.label}</strong> has been received. A admin will verify it before it appears on the website.
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
