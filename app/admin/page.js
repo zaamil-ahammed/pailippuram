@@ -29,9 +29,20 @@ export default function AdminHome() {
         let all = supabase.from(cfg.table).select('id', { count: 'exact', head: true });
         let old = supabase.from(cfg.table).select('id', { count: 'exact', head: true }).eq('status', 'approved')
           .or(`verified_at.is.null,verified_at.lt.${outdatedCutoff()}`);
-        for (const [k, v] of Object.entries(cfg.match)) {
-          all = all.eq(k, v);
-          old = old.eq(k, v);
+        if (key === 'transport') {
+          all = all.or('kind.eq.transport,description.ilike.%[TRANSPORT]%,description.ilike.%auto%,description.ilike.%taxi%');
+          old = old.or('kind.eq.transport,description.ilike.%[TRANSPORT]%,description.ilike.%auto%,description.ilike.%taxi%');
+        } else if (key === 'workers') {
+          all = all.or('kind.eq.worker,description.ilike.%[WORKER]%');
+          old = old.or('kind.eq.worker,description.ilike.%[WORKER]%');
+        } else if (key === 'shops') {
+          all = all.eq('kind', 'business').not('description', 'ilike', '%[WORKER]%').not('description', 'ilike', '%[TRANSPORT]%');
+          old = old.eq('kind', 'business').not('description', 'ilike', '%[WORKER]%').not('description', 'ilike', '%[TRANSPORT]%');
+        } else {
+          for (const [k, v] of Object.entries(cfg.match)) {
+            all = all.eq(k, v);
+            old = old.eq(k, v);
+          }
         }
         const [a, o] = await Promise.all([all, cfg.verify ? old : Promise.resolve({ count: 0 })]);
         next[key] = a.count || 0;

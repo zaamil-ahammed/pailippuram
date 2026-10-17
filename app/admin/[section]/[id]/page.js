@@ -153,13 +153,26 @@ export default function AdminEdit() {
           res = await supabase.from(cfg.table).insert({ ...cleaned, status: altStatus }).select('id').single();
         }
         if (res.error && res.error.message && res.error.message.includes('listings_kind_check')) {
-          console.warn('[Admin Save] listings_kind_check error encountered, attempting kind fallback:', res.error.message);
-          if (insertData.kind === 'transport') {
-            const { updated_by, ...cleaned } = insertData;
-            res = await supabase.from(cfg.table).insert({ ...cleaned, kind: 'worker' }).select('id').single();
-          } else if (insertData.kind === 'business') {
-            const { updated_by, ...cleaned } = insertData;
-            res = await supabase.from(cfg.table).insert({ ...cleaned, kind: 'shop' }).select('id').single();
+          console.warn('[Admin Save] listings_kind_check constraint violation for kind:', insertData.kind, '- applying business fallback');
+          const originalKind = insertData.kind || 'worker';
+          const { updated_by, ...cleaned } = insertData;
+          const tag = `[${originalKind.toUpperCase()}]`;
+          const safeDesc = cleaned.description ? (cleaned.description.includes(tag) ? cleaned.description : `${tag} ${cleaned.description}`) : tag;
+          
+          res = await supabase.from(cfg.table).insert({
+            ...cleaned,
+            kind: 'business',
+            description: safeDesc,
+          }).select('id').single();
+
+          if (res.error && res.error.message && res.error.message.includes('status_check')) {
+            const altStatus = insertData.status === 'hidden' ? 'archived' : 'hidden';
+            res = await supabase.from(cfg.table).insert({
+              ...cleaned,
+              kind: 'business',
+              description: safeDesc,
+              status: altStatus,
+            }).select('id').single();
           }
         }
         return { error: res.error, rowId: res.data?.id };
@@ -176,10 +189,9 @@ export default function AdminEdit() {
           res = await supabase.from(cfg.table).update({ ...cleaned, status: altStatus }).eq('id', id);
         }
         if (res.error && res.error.message && res.error.message.includes('listings_kind_check')) {
-          if (updateData.kind === 'transport') {
-            const { updated_by, ...cleaned } = updateData;
-            res = await supabase.from(cfg.table).update({ ...cleaned, kind: 'worker' }).eq('id', id);
-          }
+          console.warn('[Admin Save] listings_kind_check on update - applying business fallback');
+          const { updated_by, ...cleaned } = updateData;
+          res = await supabase.from(cfg.table).update({ ...cleaned, kind: 'business' }).eq('id', id);
         }
         return { error: res.error, rowId: id };
       }

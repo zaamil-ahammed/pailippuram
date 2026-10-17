@@ -35,7 +35,15 @@ export default function AdminList() {
         ? s.from(cfg.table).select(cfg.select).order('name', { ascending: true })
         : s.from(cfg.table).select(cfg.select).order('created_at', { ascending: false });
 
-      for (const [k, v] of Object.entries(cfg.match)) q = q.eq(k, v);
+      if (section === 'transport') {
+        q = q.or('kind.eq.transport,description.ilike.%[TRANSPORT]%,description.ilike.%auto%,description.ilike.%taxi%,description.ilike.%jcb%,description.ilike.%tipper%,description.ilike.%pickup%');
+      } else if (section === 'workers') {
+        q = q.or('kind.eq.worker,description.ilike.%[WORKER]%');
+      } else if (section === 'shops') {
+        q = q.eq('kind', 'business').not('description', 'ilike', '%[WORKER]%').not('description', 'ilike', '%[TRANSPORT]%');
+      } else {
+        for (const [k, v] of Object.entries(cfg.match)) q = q.eq(k, v);
+      }
 
       if (isCategories) {
         if (filter === 'Shops') q = q.eq('kind', 'business');

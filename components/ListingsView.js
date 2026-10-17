@@ -24,7 +24,11 @@ export default function ListingsView({ kind, title, ml, intro, top, fallbackCate
     (s) => {
       let q = s.from('listings').select('*, categories(name)').eq('status', 'approved').order('title');
       if (kind === 'transport') {
-        q = q.or('kind.eq.transport,description.ilike.%auto%,description.ilike.%taxi%,description.ilike.%jcb%,description.ilike.%tipper%,description.ilike.%pickup%');
+        q = q.or('kind.eq.transport,description.ilike.%[TRANSPORT]%,description.ilike.%auto%,description.ilike.%taxi%,description.ilike.%jcb%,description.ilike.%tipper%,description.ilike.%pickup%');
+      } else if (kind === 'worker') {
+        q = q.or('kind.eq.worker,description.ilike.%[WORKER]%');
+      } else if (kind === 'business') {
+        q = q.eq('kind', 'business').not('description', 'ilike', '%[WORKER]%').not('description', 'ilike', '%[TRANSPORT]%');
       } else {
         q = q.eq('kind', kind);
       }
