@@ -6,7 +6,11 @@ import ShareToast from '../components/ShareToast';
 
 export const metadata = {
   title: 'Nammude Pailippuram',
-  description: 'Local information for Pailippuram: contacts, shops, bus timing, blood donors and announcements.',
+  description: 'Local community information directory for Pailippuram, Kerala: contacts, local shops, bus timings, blood donors, panchayath details, announcements, and submissions.',
+  openGraph: {
+    title: 'Nammude Pailippuram',
+    description: 'Local community information directory for Pailippuram, Kerala: contacts, local shops, bus timings, blood donors, panchayath details, announcements, and submissions.',
+  },
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,

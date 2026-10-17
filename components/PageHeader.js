@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useMenu } from './Shell';
+import { shareServiceOrApp } from '../lib/share';
 
 export function MenuButton() {
   const { open } = useMenu();

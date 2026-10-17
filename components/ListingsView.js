@@ -32,7 +32,10 @@ export default function ListingsView({ kind, title, ml, intro, top, fallbackCate
         if (typeof cat === 'number' || !isNaN(Number(cat))) {
           q = q.eq('category_id', Number(cat));
         } else {
-          q = q.or(`title.ilike.%${cat}%,description.ilike.%${cat}%,area.ilike.%${cat}%`);
+          const safeCat = cleanSearch(cat);
+          if (safeCat) {
+            q = q.or(`title.ilike.%${safeCat}%,description.ilike.%${safeCat}%,area.ilike.%${safeCat}%`);
+          }
         }
       }
       const t = cleanSearch(term);

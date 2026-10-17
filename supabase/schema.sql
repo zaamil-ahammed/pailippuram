@@ -150,6 +150,9 @@ begin
 end $$;
 
 alter table submissions enable row level security;
+-- Note: Visitors can insert pending submissions. Because only admins can SELECT from submissions,
+-- inserts from anonymous visitors must not use .select() (return=minimal); chaining .select()
+-- causes PostgREST to return the row which triggers the SELECT policy and throws an RLS error.
 create policy "anyone can send a submission" on submissions for insert
   with check (status = 'pending');
 create policy "admins read submissions" on submissions for select using (is_admin());

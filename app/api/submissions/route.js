@@ -1,8 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { normalizeSupabaseUrl } from '../../../lib/supabase';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const rawSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl);
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const resendApiKey = process.env.RESEND_API_KEY;
 const adminEmail = process.env.ADMIN_ALERT_EMAIL;
 const fromEmail = process.env.RESEND_FROM_EMAIL || 'Nammude Pailippuram <onboarding@resend.dev>';
@@ -155,18 +158,25 @@ export async function POST(req) {
       return NextResponse.json({ ok: false, error: 'Please provide a valid title.' }, { status: 400 });
     }
 
-    if (!supabaseUrl || !supabaseAnonKey) {
+    const supabaseKey = supabaseServiceKey || supabaseAnonKey;
+    if (!supabaseUrl || !supabaseKey) {
       return NextResponse.json(
         { ok: false, error: 'Database is not configured yet. Please check .env.local' },
         { status: 503 }
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+    const safeDesc = description?.trim() || title.trim() || 'N/A';
     const row = {
       type: type || 'other',
       title: title.trim(),
-      description: description ? description.trim() : null,
+      description: safeDesc,
       phone: phone ? phone.trim() : null,
       area: area ? area.trim() : null,
       submitter_contact: submitter_contact ? submitter_contact.trim() : null,
@@ -174,15 +184,26 @@ export async function POST(req) {
       status: 'pending',
     };
 
-    let { data, error } = await supabase.from('submissions').insert(row).select().single();
+    // Do NOT chain .select() or .single() here.
+    // The RLS policy on `submissions` only allows public/anon INSERT with status='pending'.
+    // Only admins have SELECT permissions. Chaining .select() tells PostgREST to use RETURNING *,
+    // which causes PostgreSQL to evaluate the SELECT policy on the returned row and throws:
+    // "new row violates row-level security policy for table 'submissions'".
+    let { error } = await supabase.from('submissions').insert(row);
 
-    if (error && row.type === 'transport') {
-      // Fallback if user's remote database check constraint on `type` does not yet allow 'transport'
-      const fallbackRow = { ...row, type: 'worker', description: `[Transportation Vehicle] ${row.description || ''}`.trim() };
-      const fallbackRes = await supabase.from('submissions').insert(fallbackRow).select().single();
+    // If the remote database has an older check constraint on `type` (e.g. only business, contact, announcement, correction)
+    if (error && error.message && error.message.includes('submissions_type_check')) {
+      console.warn(`[Supabase Type Fallback] '${row.type}' violated check constraint, falling back to 'contact'`);
+      const fallbackRow = {
+        ...row,
+        type: 'contact',
+        description: `[${(row.type || 'Submission').toUpperCase()}] ${row.description}`.trim(),
+      };
+      const fallbackRes = await supabase.from('submissions').insert(fallbackRow);
       if (!fallbackRes.error) {
-        data = fallbackRes.data;
         error = null;
+      } else {
+        error = fallbackRes.error;
       }
     }
 
@@ -192,9 +213,9 @@ export async function POST(req) {
     }
 
     // Send email alert asynchronously without blocking user response
-    sendAlertEmail(data || row).catch((err) => console.error('[Async Email Error]', err));
+    sendAlertEmail(row).catch((err) => console.error('[Async Email Error]', err));
 
-    return NextResponse.json({ ok: true, data });
+    return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[API Submissions Error]', err);
     return NextResponse.json({ ok: false, error: 'Internal server error.' }, { status: 500 });

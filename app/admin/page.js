@@ -42,9 +42,12 @@ export default function AdminHome() {
     })();
   }, []);
 
+  const [actionError, setActionError] = useState('');
+
   async function resolve(row, status, action) {
+    setActionError('');
     const { error } = await supabase.from('submissions').update({ status }).eq('id', row.id);
-    if (error) return alert('Could not save. Please try again.');
+    if (error) return setActionError('Could not save. Please try again.');
     await logAudit(user, { action, table: 'submissions', rowId: row.id, note: row.title });
     queue.reload();
   }
@@ -68,6 +71,7 @@ export default function AdminHome() {
         <h2>Waiting for review <span className="badge">{waiting.length}</span></h2>
         <p className="muted">Removal requests come first. Aim to answer within 48 hours.</p>
         {queue.error ? <p className="error">{queue.error}</p> : null}
+        {actionError ? <p className="error">{actionError}</p> : null}
         {waiting.length === 0 && !queue.loading ? <p className="muted">Nothing is waiting. Nice.</p> : null}
         {waiting.map((r) => {
           const sec = SUBMISSION_SECTION[r.type];

@@ -43,20 +43,29 @@ export default function AdminList() {
     [section, filter, term]
   );
 
+  const [actionError, setActionError] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
+
   if (!cfg) return <div className="page"><main className="body"><p>Unknown section.</p></main></div>;
 
   async function toggleHidden(row) {
+    setActionError('');
     const status = row.status === 'approved' ? 'hidden' : 'approved';
     const { error: err } = await supabase.from(cfg.table).update({ status, updated_by: user.id }).eq('id', row.id);
-    if (err) return alert('Could not save. Please try again.');
+    if (err) return setActionError('Could not save. Please try again.');
     await logAudit(user, { action: status === 'hidden' ? 'hide' : 'show', table: cfg.table, rowId: row.id, note: cfg.title(row) });
     reload();
   }
 
   async function remove(row) {
-    if (!window.confirm(`Delete "${cfg.title(row)}" for good? Hide is safer if you may want it back.`)) return;
+    setActionError('');
+    if (deletingId !== row.id) {
+      setDeletingId(row.id);
+      return;
+    }
+    setDeletingId(null);
     const { error: err } = await supabase.from(cfg.table).delete().eq('id', row.id);
-    if (err) return alert('Could not delete. Please try again.');
+    if (err) return setActionError('Could not delete. Please try again.');
     await logAudit(user, { action: 'delete', table: cfg.table, rowId: row.id, note: cfg.title(row) });
     reload();
   }
@@ -77,6 +86,7 @@ export default function AdminList() {
           ))}
         </div>
         {error ? <p className="error">{error}</p> : null}
+        {actionError ? <p className="error">{actionError}</p> : null}
         {loading ? <p className="muted">Loading...</p> : null}
         {!loading && !error && rows.length === 0 ? <p className="muted">Nothing here.</p> : null}
         {rows.map((r) => (
@@ -95,7 +105,14 @@ export default function AdminList() {
             <div className="btnrow">
               <Link className="btn dark" href={`/admin/${section}/${r.id}`}>Edit</Link>
               <button type="button" className="btn" onClick={() => toggleHidden(r)}>{r.status === 'hidden' ? 'Show' : 'Hide'}</button>
-              <button type="button" className="btn" onClick={() => remove(r)}>Delete</button>
+              <button
+                type="button"
+                className="btn"
+                style={deletingId === r.id ? { color: '#dc2626', borderColor: '#fca5a5', backgroundColor: '#fef2f2' } : {}}
+                onClick={() => remove(r)}
+              >
+                {deletingId === r.id ? 'Confirm delete?' : 'Delete'}
+              </button>
             </div>
           </article>
         ))}

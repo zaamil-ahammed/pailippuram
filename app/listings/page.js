@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import PageHeader from "../../components/PageHeader";
 import { supabase, isConfigured, cleanSearch } from "../../lib/supabase";
 
 export default function Listings() {
@@ -60,84 +62,92 @@ export default function Listings() {
   }, [q, kind, category, ready]);
 
   return (
-    <main>
-      <h1>Contacts &amp; local services</h1>
-      <p className="sub">Only approved listings are shown.</p>
-
-      <div className="searchbar">
-        <input
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search by name, service or area"
-          aria-label="Search listings"
-        />
-      </div>
-      <div className="searchbar">
-        <select value={kind} onChange={(e) => setKind(e.target.value)}>
-          <option value="">Contacts and businesses</option>
-          <option value="contact">Important contacts</option>
-          <option value="business">Businesses and services</option>
-        </select>
-        <select value={category} onChange={(e) => setCategory(e.target.value)}>
-          <option value="">All categories</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {error && <p className="error">{error}</p>}
-      {loading && <p className="meta">Loading...</p>}
-      {!loading && !error && rows.length === 0 && (
-        <p>
-          Nothing found. Try a different word, or{" "}
-          <a href="/submit">suggest a listing</a>.
-        </p>
-      )}
-
-      {rows.map((r) => (
-        <div className="card" key={r.id}>
-          <h3>{r.title}</h3>
-          <div>
-            <span className="badge">
-              {r.kind === "contact" ? "Contact" : "Business"}
-            </span>
-            {r.categories?.name && (
-              <span className="badge">{r.categories.name}</span>
-            )}
-            {r.verified_at && <span className="badge">Verified</span>}
-          </div>
-          {r.description && <p style={{ margin: "8px 0" }}>{r.description}</p>}
-          <div className="meta">
-            {r.area && <>Area: {r.area} · </>}
-            {r.hours && <>Hours: {r.hours} · </>}
-            {r.source && <>Source: {r.source} · </>}
-            {r.verified_at
-              ? `Verified ${r.verified_at}`
-              : `Updated ${new Date(r.updated_at).toLocaleDateString("en-IN")}`}
-          </div>
-          <div className="actions">
-            {r.phone && (
-              <a className="btn" href={`tel:${r.phone}`}>
-                Call {r.phone}
-              </a>
-            )}
-            {r.whatsapp && (
-              <a
-                className="btn"
-                href={`https://wa.me/${r.whatsapp.replace(/\D/g, "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                WhatsApp
-              </a>
-            )}
-          </div>
+    <div className="page">
+      <PageHeader title="Contacts & services" ml="ലിസ്റ്റിംഗുകൾ">
+        <form onSubmit={(e) => e.preventDefault()}>
+          <label htmlFor="q" className="hp">Search</label>
+          <input
+            id="q"
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search by name, service or area"
+            aria-label="Search listings"
+          />
+        </form>
+      </PageHeader>
+      <main className="body">
+        <div style={{ display: "flex", gap: 10 }}>
+          <select value={kind} onChange={(e) => setKind(e.target.value)} style={{ flex: 1 }}>
+            <option value="">All kinds</option>
+            <option value="contact">Important contacts</option>
+            <option value="business">Businesses and services</option>
+            <option value="worker">Native workers</option>
+            <option value="transport">Transportation</option>
+          </select>
+          <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ flex: 1 }}>
+            <option value="">All categories</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
         </div>
-      ))}
-    </main>
+
+        {error && <p className="error">{error}</p>}
+        {loading && <p className="muted">Loading...</p>}
+        {!loading && !error && rows.length === 0 && (
+          <p className="muted">
+            Nothing found. Try a different word, or{" "}
+            <Link href="/share" style={{ textDecoration: "underline", color: "var(--primary)" }}>share information</Link>.
+          </p>
+        )}
+
+        {rows.map((r) => (
+          <div className="card" key={r.id}>
+            <div className="cardhead">
+              <div>
+                <h3>{r.title}</h3>
+                <p className="muted">{[r.categories?.name, r.area].filter(Boolean).join(" · ")}</p>
+              </div>
+              <span className="pill">
+                {r.kind === "contact"
+                  ? "Contact"
+                  : r.kind === "worker"
+                  ? "Worker"
+                  : r.kind === "transport"
+                  ? "Transport"
+                  : "Business"}
+              </span>
+            </div>
+            {r.description && <p style={{ margin: "4px 0" }}>{r.description}</p>}
+            <p className="muted small">
+              {r.hours && `Hours: ${r.hours} · `}
+              {r.verified_at
+                ? `Verified ${new Date(r.verified_at).toLocaleDateString("en-IN")}`
+                : `Updated ${new Date(r.updated_at).toLocaleDateString("en-IN")}`}
+            </p>
+            <div className="btnrow" style={{ marginTop: 6 }}>
+              {r.phone && (
+                <a className="btn dark" href={`tel:${r.phone}`}>
+                  Call {r.phone}
+                </a>
+              )}
+              {r.whatsapp && (
+                <a
+                  className="btn light"
+                  href={`https://wa.me/${r.whatsapp.replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  WhatsApp
+                </a>
+              )}
+            </div>
+          </div>
+        ))}
+      </main>
+    </div>
   );
 }
