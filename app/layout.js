@@ -43,7 +43,8 @@ export default function RootLayout({ children }) {
           {children}
           <footer className="footer" style={{ maxWidth: 640, margin: '0 auto' }}>
             <span>
-              <Link href="/correction">Request a correction</Link> · <Link href="/about">About and privacy</Link>
+             
+               <Link href="/about">About and privacy</Link>
             </span>
             <span style={{ textAlign: 'center' }}>
               A{' '}
