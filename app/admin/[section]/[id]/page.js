@@ -25,6 +25,12 @@ export default function AdminEdit() {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // Quick inline category creation state
+  const [showAddCat, setShowAddCat] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatMl, setNewCatMl] = useState('');
+  const [catBusy, setCatBusy] = useState(false);
+
   const cats = useRows(
     (s) => s.from('categories').select('*').eq('kind', cfg?.match?.kind || 'none').order('name'),
     [section]
@@ -61,6 +67,34 @@ export default function AdminEdit() {
     setValues((v) => ({ ...v, [name]: t.type === 'checkbox' ? t.checked : t.value }));
   };
 
+  async function handleCreateCategoryInline(fieldName) {
+    if (!newCatName.trim()) return;
+    setCatBusy(true);
+    setMsg('');
+    const targetKind = cfg.match?.kind || 'business';
+    const { data: createdCat, error: catErr } = await supabase
+      .from('categories')
+      .insert({
+        kind: targetKind,
+        name: newCatName.trim(),
+        name_ml: newCatMl.trim() || null,
+      })
+      .select('id, name')
+      .single();
+    setCatBusy(false);
+    if (catErr) {
+      setMsg(catErr.message || 'Could not save category.');
+      return;
+    }
+    if (createdCat) {
+      setValues((v) => ({ ...v, [fieldName]: createdCat.id }));
+      setNewCatName('');
+      setNewCatMl('');
+      setShowAddCat(false);
+      cats.reload();
+    }
+  }
+
   async function save(e) {
     e.preventDefault();
     setMsg('');
@@ -73,20 +107,30 @@ export default function AdminEdit() {
         v = typeof v === 'string' ? v.trim() : v;
         if (f.required && !v) return setMsg(`Please fill in: ${f.label}`);
         if (v === '') v = null;
-        if (f.type === 'category' && v) v = Number(v);
+        if (f.type === 'category' && v) {
+          if (typeof v === 'string' && /^\d+$/.test(v.trim())) {
+            v = Number(v);
+          }
+        }
       }
       payload[f.name] = v;
     }
-    let effectiveStatus = status;
-    if (cfg.table === 'listings' && status === 'hidden') {
-      effectiveStatus = 'archived';
+
+    if (cfg.table === 'categories') {
+      // The categories table schema is strictly { id, kind, name, name_ml }.
+      // Do not attach status, updated_by, verified_at, or body.
+    } else {
+      let effectiveStatus = status;
+      if (cfg.table === 'listings' && status === 'hidden') {
+        effectiveStatus = 'archived';
+      }
+      payload.status = effectiveStatus;
+      if (cfg.table === 'announcements' && !payload.body) {
+        payload.body = payload.title || 'Details';
+      }
+      if (user?.id) payload.updated_by = user.id;
+      if (cfg.verify && verify) payload.verified_at = new Date().toISOString();
     }
-    payload.status = effectiveStatus;
-    if (cfg.table === 'announcements' && !payload.body) {
-      payload.body = payload.title || 'Details';
-    }
-    if (user?.id) payload.updated_by = user.id;
-    if (cfg.verify && verify) payload.verified_at = new Date().toISOString();
 
     setBusy(true);
     let rowId = id;
@@ -94,34 +138,48 @@ export default function AdminEdit() {
 
     async function executeSave(data) {
       if (isNew) {
-        let res = await supabase.from(cfg.table).insert({ ...data, ...cfg.match }).select('id').single();
+        let insertData = { ...data, ...cfg.match };
+        if (cfg.table === 'listings' && !insertData.kind) {
+          insertData.kind = cfg.match?.kind || 'business';
+        }
+        let res = await supabase.from(cfg.table).insert(insertData).select('id').single();
         if (res.error && res.error.message && res.error.message.includes('updated_by')) {
-          const { updated_by, ...cleaned } = data;
-          res = await supabase.from(cfg.table).insert({ ...cleaned, ...cfg.match }).select('id').single();
+          const { updated_by, ...cleaned } = insertData;
+          res = await supabase.from(cfg.table).insert(cleaned).select('id').single();
         }
         if (res.error && res.error.message && res.error.message.includes('status_check')) {
-          const altStatus = data.status === 'hidden' ? 'archived' : 'hidden';
-          const { updated_by, ...cleaned } = data;
-          res = await supabase.from(cfg.table).insert({ ...cleaned, ...cfg.match, status: altStatus }).select('id').single();
+          const altStatus = insertData.status === 'hidden' ? 'archived' : 'hidden';
+          const { updated_by, ...cleaned } = insertData;
+          res = await supabase.from(cfg.table).insert({ ...cleaned, status: altStatus }).select('id').single();
         }
-        if (res.error && cfg.match?.kind === 'transport') {
-          const { updated_by, ...cleaned } = data;
-          const fallbackRes = await supabase.from(cfg.table).insert({ ...cleaned, kind: 'worker' }).select('id').single();
-          if (!fallbackRes.error) {
-            return { error: null, rowId: fallbackRes.data?.id };
+        if (res.error && res.error.message && res.error.message.includes('listings_kind_check')) {
+          console.warn('[Admin Save] listings_kind_check error encountered, attempting kind fallback:', res.error.message);
+          if (insertData.kind === 'transport') {
+            const { updated_by, ...cleaned } = insertData;
+            res = await supabase.from(cfg.table).insert({ ...cleaned, kind: 'worker' }).select('id').single();
+          } else if (insertData.kind === 'business') {
+            const { updated_by, ...cleaned } = insertData;
+            res = await supabase.from(cfg.table).insert({ ...cleaned, kind: 'shop' }).select('id').single();
           }
         }
         return { error: res.error, rowId: res.data?.id };
       } else {
-        let res = await supabase.from(cfg.table).update(data).eq('id', id);
+        let updateData = { ...data };
+        let res = await supabase.from(cfg.table).update(updateData).eq('id', id);
         if (res.error && res.error.message && res.error.message.includes('updated_by')) {
-          const { updated_by, ...cleaned } = data;
+          const { updated_by, ...cleaned } = updateData;
           res = await supabase.from(cfg.table).update(cleaned).eq('id', id);
         }
         if (res.error && res.error.message && res.error.message.includes('status_check')) {
-          const altStatus = data.status === 'hidden' ? 'archived' : 'hidden';
-          const { updated_by, ...cleaned } = data;
+          const altStatus = updateData.status === 'hidden' ? 'archived' : 'hidden';
+          const { updated_by, ...cleaned } = updateData;
           res = await supabase.from(cfg.table).update({ ...cleaned, status: altStatus }).eq('id', id);
+        }
+        if (res.error && res.error.message && res.error.message.includes('listings_kind_check')) {
+          if (updateData.kind === 'transport') {
+            const { updated_by, ...cleaned } = updateData;
+            res = await supabase.from(cfg.table).update({ ...cleaned, kind: 'worker' }).eq('id', id);
+          }
         }
         return { error: res.error, rowId: id };
       }
@@ -178,31 +236,79 @@ export default function AdminEdit() {
                     {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 ) : f.type === 'category' ? (
-                  <select id={fid} value={values[f.name] ?? ''} onChange={set(f.name)}>
-                    <option value="">None</option>
-                    {cats.rows.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <select id={fid} value={values[f.name] ?? ''} onChange={set(f.name)} style={{ flex: 1 }}>
+                        <option value="">None / Choose category</option>
+                        {cats.rows.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}{c.name_ml ? ` (${c.name_ml})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="btn light"
+                        style={{ padding: '0 12px', minWidth: 110, fontSize: 13 }}
+                        onClick={() => setShowAddCat(!showAddCat)}
+                      >
+                        {showAddCat ? 'Cancel' : '+ New category'}
+                      </button>
+                    </div>
+                    {showAddCat && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, background: 'var(--accent-tint)', border: '1px solid var(--accent-border)', borderRadius: 12, marginTop: 4 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>Add Category for {cfg.label}</span>
+                        <input
+                          type="text"
+                          placeholder="Category name (e.g. Bakery, Pharmacy, Electrician)"
+                          value={newCatName}
+                          onChange={(e) => setNewCatName(e.target.value)}
+                          style={{ minHeight: 42 }}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Category name in Malayalam (optional)"
+                          value={newCatMl}
+                          onChange={(e) => setNewCatMl(e.target.value)}
+                          style={{ minHeight: 42 }}
+                        />
+                        <button
+                          type="button"
+                          className="btn dark"
+                          style={{ minHeight: 38, fontSize: 13 }}
+                          disabled={catBusy || !newCatName.trim()}
+                          onClick={() => handleCreateCategoryInline(f.name)}
+                        >
+                          {catBusy ? 'Saving category...' : 'Save & Select Category'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <input id={fid} type={f.type} value={values[f.name] || ''} onChange={set(f.name)} />
                 )}
               </div>
             );
           })}
-          <div className="label">Status</div>
-          <div className="btnrow">
-            <button type="button" className={`btn ${status === 'approved' ? 'dark' : ''}`} onClick={() => setStatus('approved')}>Live</button>
-            <button type="button" className={`btn ${status === 'hidden' ? 'dark' : ''}`} onClick={() => setStatus('hidden')}>Hidden</button>
-          </div>
-          {cfg.verify ? (
-            <div className="check">
-              <input id="verify" type="checkbox" checked={verify} onChange={(e) => setVerify(e.target.checked)} />
-              <label htmlFor="verify">Mark as verified today (I checked these details)</label>
-            </div>
-          ) : null}
-          <div className="field">
-            <label htmlFor="note">Note for the activity log <span className="muted small">(optional)</span></label>
-            <input id="note" type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. owner called to change the number" />
-          </div>
+          {cfg.table !== 'categories' && (
+            <>
+              <div className="label">Status</div>
+              <div className="btnrow">
+                <button type="button" className={`btn ${status === 'approved' ? 'dark' : ''}`} onClick={() => setStatus('approved')}>Live</button>
+                <button type="button" className={`btn ${status === 'hidden' ? 'dark' : ''}`} onClick={() => setStatus('hidden')}>Hidden</button>
+              </div>
+              {cfg.verify ? (
+                <div className="check">
+                  <input id="verify" type="checkbox" checked={verify} onChange={(e) => setVerify(e.target.checked)} />
+                  <label htmlFor="verify">Mark as verified today (I checked these details)</label>
+                </div>
+              ) : null}
+              <div className="field">
+                <label htmlFor="note">Note for the activity log <span className="muted small">(optional)</span></label>
+                <input id="note" type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. owner called to change the number" />
+              </div>
+            </>
+          )}
           {msg ? <p className="error" role="alert">{msg}</p> : null}
           <button type="submit" className="btn dark big" disabled={busy}>{busy ? 'Saving...' : 'Save changes'}</button>
           <button type="button" className="btn big" onClick={() => router.push(`/admin/${section}`)}>Cancel</button>

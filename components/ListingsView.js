@@ -29,8 +29,10 @@ export default function ListingsView({ kind, title, ml, intro, top, fallbackCate
         q = q.eq('kind', kind);
       }
       if (cat) {
-        if (typeof cat === 'number' || !isNaN(Number(cat))) {
+        if (typeof cat === 'number' || (typeof cat === 'string' && /^\d+$/.test(cat.trim()))) {
           q = q.eq('category_id', Number(cat));
+        } else if (typeof cat === 'string' && /^[0-9a-f-]{36}$/i.test(cat.trim())) {
+          q = q.eq('category_id', cat.trim());
         } else {
           const safeCat = cleanSearch(cat);
           if (safeCat) {

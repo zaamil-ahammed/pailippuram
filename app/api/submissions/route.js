@@ -160,10 +160,18 @@ export async function POST(req) {
 
     const supabaseKey = supabaseServiceKey || supabaseAnonKey;
     if (!supabaseUrl || !supabaseKey) {
-      return NextResponse.json(
-        { ok: false, error: 'Database is not configured yet. Please check .env.local' },
-        { status: 503 }
-      );
+      console.log('[Submissions API] Supabase credentials not set; submission accepted in mock/demo mode.');
+      sendAlertEmail({
+        type: type || 'other',
+        title: title.trim(),
+        description: description?.trim() || title.trim() || 'N/A',
+        phone: phone ? phone.trim() : null,
+        area: area ? area.trim() : null,
+        submitter_contact: submitter_contact ? submitter_contact.trim() : null,
+        consent: Boolean(consent),
+        created_at: new Date().toISOString(),
+      }).catch((err) => console.error('[Async Email Error]', err));
+      return NextResponse.json({ ok: true, mocked: true });
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey, {

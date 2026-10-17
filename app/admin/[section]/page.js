@@ -25,22 +25,37 @@ export default function AdminList() {
     setTerm(q);
   }, []);
 
+  const isCategories = cfg?.table === 'categories';
+  const activeFilters = isCategories ? ['All', 'Shops', 'Contacts', 'Workers', 'Transport'] : FILTERS;
+
   const { rows, loading, error, reload } = useRows(
     (s) => {
       if (!cfg) return Promise.resolve({ data: [], error: null });
-      let q = s.from(cfg.table).select(cfg.select).order('created_at', { ascending: false });
+      let q = isCategories
+        ? s.from(cfg.table).select(cfg.select).order('name', { ascending: true })
+        : s.from(cfg.table).select(cfg.select).order('created_at', { ascending: false });
+
       for (const [k, v] of Object.entries(cfg.match)) q = q.eq(k, v);
-      if (filter === 'Live') q = q.eq('status', 'approved');
-      if (filter === 'Hidden') q = q.or('status.eq.hidden,status.eq.archived');
-      if (filter === 'Outdated') {
-        const cutoff = new Date(Date.now() - OUTDATED_DAYS * 86400000).toISOString();
-        q = q.eq('status', 'approved').or(`verified_at.is.null,verified_at.lt.${cutoff}`);
+
+      if (isCategories) {
+        if (filter === 'Shops') q = q.eq('kind', 'business');
+        if (filter === 'Contacts') q = q.eq('kind', 'contact');
+        if (filter === 'Workers') q = q.eq('kind', 'worker');
+        if (filter === 'Transport') q = q.eq('kind', 'transport');
+      } else {
+        if (filter === 'Live') q = q.eq('status', 'approved');
+        if (filter === 'Hidden') q = q.or('status.eq.hidden,status.eq.archived');
+        if (filter === 'Outdated') {
+          const cutoff = new Date(Date.now() - OUTDATED_DAYS * 86400000).toISOString();
+          q = q.eq('status', 'approved').or(`verified_at.is.null,verified_at.lt.${cutoff}`);
+        }
       }
+
       const t = cleanSearch(term);
       if (t) q = q.or(cfg.searchCols.map((c) => `${c}.ilike.%${t}%`).join(','));
       return q;
     },
-    [section, filter, term]
+    [section, filter, term, isCategories]
   );
 
   const [actionError, setActionError] = useState('');
@@ -87,7 +102,7 @@ export default function AdminList() {
       <main className="body">
         <Link className="btn dark big" href={`/admin/${section}/new`}>+ Add new {cfg.singular}</Link>
         <div className="chips">
-          {FILTERS.map((f) => (
+          {activeFilters.map((f) => (
             <button key={f} type="button" className={`chip ${filter === f ? 'on' : ''}`} onClick={() => setFilter(f)}>{f}</button>
           ))}
         </div>
@@ -102,15 +117,25 @@ export default function AdminList() {
                 <h3>{cfg.title(r)}</h3>
                 <p className="muted">{cfg.subtitle(r)}</p>
               </div>
-              <span className={`pill ${r.status !== 'approved' ? 'line' : ''}`}>{r.status !== 'approved' ? 'Hidden' : 'Live'}</span>
+              {isCategories ? (
+                <span className="pill" style={{ textTransform: 'capitalize' }}>{r.kind}</span>
+              ) : (
+                <span className={`pill ${r.status !== 'approved' ? 'line' : ''}`}>{r.status !== 'approved' ? 'Hidden' : 'Live'}</span>
+              )}
             </div>
-            <p className="muted small">
-              {cfg.verify ? (r.verified_at ? `Verified ${formatDate(r.verified_at)}` : 'Never verified') : ''}
-              {cfg.verify ? ' · ' : ''}Last edited {formatDate(r.updated_at)}
-            </p>
+            {isCategories ? (
+              <p className="muted small">Category ID: #{r.id}</p>
+            ) : (
+              <p className="muted small">
+                {cfg.verify ? (r.verified_at ? `Verified ${formatDate(r.verified_at)}` : 'Never verified') : ''}
+                {cfg.verify ? ' · ' : ''}Last edited {formatDate(r.updated_at)}
+              </p>
+            )}
             <div className="btnrow">
               <Link className="btn dark" href={`/admin/${section}/${r.id}`}>Edit</Link>
-              <button type="button" className="btn" onClick={() => toggleHidden(r)}>{r.status !== 'approved' ? 'Show' : 'Hide'}</button>
+              {!isCategories && (
+                <button type="button" className="btn" onClick={() => toggleHidden(r)}>{r.status !== 'approved' ? 'Show' : 'Hide'}</button>
+              )}
               <button
                 type="button"
                 className="btn"
