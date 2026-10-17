@@ -8,7 +8,12 @@ import PersonAvatar from './PersonAvatar';
 export default function ListingCard({ row }) {
   const [copied, setCopied] = useState(false);
   const wa = whatsappLink(row.whatsapp || row.phone);
-  const isAvatarVisible = row.kind === 'worker' || row.kind === 'transport' || Boolean(row.photo_url);
+  const photoFromDesc = row.description?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim();
+  const effectivePhoto = row.photo_url || photoFromDesc || '';
+  const isAvatarVisible = row.kind === 'worker' || row.kind === 'transport' || Boolean(effectivePhoto);
+  const cleanDescription = row.description
+    ? row.description.replace(/Photo:\s*[^\s\n]+/gi, '').replace(/\n{2,}/g, '\n').trim()
+    : '';
 
   const handleShare = async () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -30,7 +35,7 @@ export default function ListingCard({ row }) {
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
         {isAvatarVisible && (
           <PersonAvatar
-            src={row.photo_url}
+            src={effectivePhoto}
             alt={row.title}
             category={row.categories?.name || row.title}
             kind={row.kind || 'worker'}
@@ -67,7 +72,7 @@ export default function ListingCard({ row }) {
             </button>
           </div>
           {row.hours ? <p className="small" style={{ marginTop: 4 }}>Open: {row.hours}</p> : null}
-          {row.description ? <p style={{ marginTop: 4 }}>{row.description}</p> : null}
+          {cleanDescription ? <p style={{ marginTop: 4 }}>{cleanDescription}</p> : null}
           {row.verified_at ? <p className="muted small" style={{ marginTop: 4 }}>Checked {formatDate(row.verified_at)}</p> : null}
         </div>
       </div>

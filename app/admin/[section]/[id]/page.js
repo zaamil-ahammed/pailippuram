@@ -46,7 +46,21 @@ export default function AdminEdit() {
         if (error || !data) return setMsg('Could not find this item.');
         setOriginal(data);
         setStatus(data.status);
-        return setValues(Object.fromEntries(cfg.fields.map((f) => [f.name, data[f.name] ?? blank[f.name]])));
+        const photoFromDesc = data.description?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim()
+          || data.detail?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim();
+        const initialValues = Object.fromEntries(cfg.fields.map((f) => [f.name, data[f.name] ?? blank[f.name]]));
+        if (!initialValues.photo_url && photoFromDesc) {
+          initialValues.photo_url = photoFromDesc;
+        }
+        if (photoFromDesc) {
+          if (initialValues.description) {
+            initialValues.description = initialValues.description.replace(/Photo:\s*[^\s\n]+/gi, '').trim();
+          }
+          if (initialValues.detail) {
+            initialValues.detail = initialValues.detail.replace(/Photo:\s*[^\s\n]+/gi, '').trim();
+          }
+        }
+        return setValues(initialValues);
       }
       const from = new URLSearchParams(window.location.search).get('from');
       if (from) {
@@ -216,14 +230,31 @@ export default function AdminEdit() {
           insertData.kind = cfg.match?.kind || 'business';
         }
         let res = await supabase.from(cfg.table).insert(insertData).select('id').single();
+
+        // If photo_url column is missing from remote DB schema cache (e.g. listings table)
+        if (res.error && res.error.message && (res.error.message.includes('photo_url') || res.error.message.includes('schema cache'))) {
+          console.warn('[Admin Save] photo_url column not found in schema cache, storing in description fallback');
+          const { photo_url, ...withoutPhoto } = insertData;
+          if (photo_url) {
+            const descField = cfg.table === 'panchayath_items' ? 'detail' : 'description';
+            const cur = withoutPhoto[descField] || '';
+            if (!cur.includes(photo_url)) {
+              withoutPhoto[descField] = cur ? `${cur}\nPhoto: ${photo_url}` : `Photo: ${photo_url}`;
+            }
+          }
+          insertData = withoutPhoto;
+          res = await supabase.from(cfg.table).insert(insertData).select('id').single();
+        }
+
         if (res.error && res.error.message && res.error.message.includes('updated_by')) {
           const { updated_by, ...cleaned } = insertData;
-          res = await supabase.from(cfg.table).insert(cleaned).select('id').single();
+          insertData = cleaned;
+          res = await supabase.from(cfg.table).insert(insertData).select('id').single();
         }
         if (res.error && res.error.message && res.error.message.includes('status_check')) {
           const altStatus = insertData.status === 'hidden' ? 'archived' : 'hidden';
-          const { updated_by, ...cleaned } = insertData;
-          res = await supabase.from(cfg.table).insert({ ...cleaned, status: altStatus }).select('id').single();
+          insertData = { ...insertData, status: altStatus };
+          res = await supabase.from(cfg.table).insert(insertData).select('id').single();
         }
         if (res.error && res.error.message && (res.error.message.includes('kind_check') || res.error.message.includes('listings_kind_check'))) {
           console.warn('[Admin Save] listings_kind_check constraint violation for kind:', insertData.kind, '- trying candidate fallbacks');
@@ -262,14 +293,31 @@ export default function AdminEdit() {
       } else {
         let updateData = { ...data };
         let res = await supabase.from(cfg.table).update(updateData).eq('id', id);
+
+        // If photo_url column is missing from remote DB schema cache on update
+        if (res.error && res.error.message && (res.error.message.includes('photo_url') || res.error.message.includes('schema cache'))) {
+          console.warn('[Admin Save Update] photo_url column not found in schema cache, storing in description fallback');
+          const { photo_url, ...withoutPhoto } = updateData;
+          if (photo_url) {
+            const descField = cfg.table === 'panchayath_items' ? 'detail' : 'description';
+            const cur = withoutPhoto[descField] || '';
+            if (!cur.includes(photo_url)) {
+              withoutPhoto[descField] = cur ? `${cur}\nPhoto: ${photo_url}` : `Photo: ${photo_url}`;
+            }
+          }
+          updateData = withoutPhoto;
+          res = await supabase.from(cfg.table).update(updateData).eq('id', id);
+        }
+
         if (res.error && res.error.message && res.error.message.includes('updated_by')) {
           const { updated_by, ...cleaned } = updateData;
-          res = await supabase.from(cfg.table).update(cleaned).eq('id', id);
+          updateData = cleaned;
+          res = await supabase.from(cfg.table).update(updateData).eq('id', id);
         }
         if (res.error && res.error.message && res.error.message.includes('status_check')) {
           const altStatus = updateData.status === 'hidden' ? 'archived' : 'hidden';
-          const { updated_by, ...cleaned } = updateData;
-          res = await supabase.from(cfg.table).update({ ...cleaned, status: altStatus }).eq('id', id);
+          updateData = { ...updateData, status: altStatus };
+          res = await supabase.from(cfg.table).update(updateData).eq('id', id);
         }
         if (res.error && res.error.message && (res.error.message.includes('kind_check') || res.error.message.includes('listings_kind_check'))) {
           console.warn('[Admin Save] listings_kind_check on update - trying candidate fallbacks');

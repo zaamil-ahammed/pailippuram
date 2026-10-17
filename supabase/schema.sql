@@ -1,7 +1,15 @@
--- Nammude Pailippuram: database setup.
+-- Nammude Pailippuram: database setup & migration.
 -- Run this whole file once in Supabase > SQL Editor > New query > Run.
 -- Safe rule of the house: visitors can only READ rows with status = 'approved'.
 -- Only people listed in the `admins` table can add, edit, hide or delete.
+
+-- ---------- Schema Migrations (Safe to run on existing databases) ----------
+-- If your database was created earlier, run these lines to ensure photo_url columns exist:
+alter table if exists listings add column if not exists photo_url text;
+alter table if exists panchayath_items add column if not exists photo_url text;
+alter table if exists donors add column if not exists photo_url text;
+alter table if exists submissions add column if not exists photo_url text;
+notify pgrst, 'reload schema';
 
 -- ---------- Tables ----------
 

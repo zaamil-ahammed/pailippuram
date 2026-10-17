@@ -59,22 +59,26 @@ export default function Donors() {
         {error ? <p className="error">{error}</p> : null}
         {loading ? <p className="muted">Loading...</p> : null}
         {!loading && !error && rows.length === 0 ? <p className="muted">No donors found for this group.</p> : null}
-        {rows.map((d) => (
-          <article key={d.id} className="card">
-            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-              <PersonAvatar
-                src={d.photo_url}
-                alt={d.name}
-                category={d.blood_group}
-                kind="donor"
-                size={70}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="cardhead">
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <h3 style={{ wordBreak: 'break-word' }}>{d.name}</h3>
-                    <p className="muted" style={{ fontSize: 13.5 }}>{d.area}</p>
-                  </div>
+        {rows.map((d) => {
+          const photoFromArea = d.area?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim();
+          const effectivePhoto = d.photo_url || photoFromArea || '';
+          const cleanArea = d.area ? d.area.replace(/Photo:\s*[^\s\n]+/gi, '').trim() : '';
+          return (
+            <article key={d.id} className="card">
+              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <PersonAvatar
+                  src={effectivePhoto}
+                  alt={d.name}
+                  category={d.blood_group}
+                  kind="donor"
+                  size={70}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="cardhead">
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <h3 style={{ wordBreak: 'break-word' }}>{d.name}</h3>
+                      <p className="muted" style={{ fontSize: 13.5 }}>{cleanArea}</p>
+                    </div>
                   <span className="group" style={{ flexShrink: 0 }}>{d.blood_group}</span>
                 </div>
                 {d.verified_at ? <p className="muted small" style={{ marginTop: 4 }}>Checked {formatDate(d.verified_at)}</p> : null}
@@ -104,7 +108,8 @@ export default function Donors() {
               ) : null}
             </div>
           </article>
-        ))}
+        );
+      })}
         <p className="muted small">Want to be a donor? Use “Share information” in the menu. We only list people who say yes.</p>
       </main>
     </div>

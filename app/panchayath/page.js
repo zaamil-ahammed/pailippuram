@@ -42,29 +42,34 @@ export default function Panchayath() {
           return (
             <section key={value} className="stack">
               <h2>{HEADINGS[value]}</h2>
-              {items.map((r) => (
-                <article key={r.id} className="card">
-                  <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                    {(isPersonSection || r.photo_url) && (
-                      <PersonAvatar
-                        src={r.photo_url}
-                        alt={r.title}
-                        category={value === 'bearer' ? 'Office bearer' : 'Ward member'}
-                        kind="panchayath"
-                        size={72}
-                      />
-                    )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <h3>{r.title}</h3>
-                      {r.detail ? <p style={{ marginTop: 4 }}>{r.detail}</p> : null}
-                      <div style={{ marginTop: 8 }}>
-                        <Extra value={r.extra} />
+              {items.map((r) => {
+                const photoFromDetail = r.detail?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim();
+                const effectivePhoto = r.photo_url || photoFromDetail || '';
+                const cleanDetail = r.detail ? r.detail.replace(/Photo:\s*[^\s\n]+/gi, '').replace(/\n{2,}/g, '\n').trim() : '';
+                return (
+                  <article key={r.id} className="card">
+                    <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                      {(isPersonSection || effectivePhoto) && (
+                        <PersonAvatar
+                          src={effectivePhoto}
+                          alt={r.title}
+                          category={value === 'bearer' ? 'Office bearer' : 'Ward member'}
+                          kind="panchayath"
+                          size={72}
+                        />
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h3>{r.title}</h3>
+                        {cleanDetail ? <p style={{ marginTop: 4 }}>{cleanDetail}</p> : null}
+                        <div style={{ marginTop: 8 }}>
+                          <Extra value={r.extra} />
+                        </div>
+                        {r.verified_at ? <p className="muted small" style={{ marginTop: 6 }}>Checked {formatDate(r.verified_at)}</p> : null}
                       </div>
-                      {r.verified_at ? <p className="muted small" style={{ marginTop: 6 }}>Checked {formatDate(r.verified_at)}</p> : null}
                     </div>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                );
+              })}
             </section>
           );
         })}
