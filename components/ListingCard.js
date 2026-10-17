@@ -8,8 +8,9 @@ import PersonAvatar from './PersonAvatar';
 export default function ListingCard({ row }) {
   const [copied, setCopied] = useState(false);
   const wa = whatsappLink(row.whatsapp || row.phone);
+  const localPhoto = typeof window !== 'undefined' ? window.localStorage.getItem(`np_photo_${row.id}`) : null;
   const photoFromDesc = row.description?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim();
-  const effectivePhoto = row.photo_url || photoFromDesc || '';
+  const effectivePhoto = row.photo_url || localPhoto || photoFromDesc || '';
   const isAvatarVisible = row.kind === 'worker' || row.kind === 'transport' || Boolean(effectivePhoto);
   const cleanDescription = row.description
     ? row.description.replace(/Photo:\s*[^\s\n]+/gi, '').replace(/\n{2,}/g, '\n').trim()

@@ -46,11 +46,12 @@ export default function AdminEdit() {
         if (error || !data) return setMsg('Could not find this item.');
         setOriginal(data);
         setStatus(data.status);
+        const localPhoto = typeof window !== 'undefined' ? window.localStorage.getItem(`np_photo_${id}`) : null;
         const photoFromDesc = data.description?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim()
           || data.detail?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim();
         const initialValues = Object.fromEntries(cfg.fields.map((f) => [f.name, data[f.name] ?? blank[f.name]]));
-        if (!initialValues.photo_url && photoFromDesc) {
-          initialValues.photo_url = photoFromDesc;
+        if (!initialValues.photo_url) {
+          initialValues.photo_url = data.photo_url || localPhoto || photoFromDesc || '';
         }
         if (photoFromDesc) {
           if (initialValues.description) {
@@ -229,21 +230,39 @@ export default function AdminEdit() {
         if (cfg.table === 'listings' && !insertData.kind) {
           insertData.kind = cfg.match?.kind || 'business';
         }
+        if (insertData.description) {
+          insertData.description = insertData.description.replace(/Photo:\s*data:[^\s\n]+/gi, '').slice(0, 500).trim() || null;
+        }
+
         let res = await supabase.from(cfg.table).insert(insertData).select('id').single();
 
         // If photo_url column is missing from remote DB schema cache (e.g. listings table)
         if (res.error && res.error.message && (res.error.message.includes('photo_url') || res.error.message.includes('schema cache'))) {
-          console.warn('[Admin Save] photo_url column not found in schema cache, storing in description fallback');
+          console.warn('[Admin Save] photo_url column not found in schema cache, saving without photo_url column');
           const { photo_url, ...withoutPhoto } = insertData;
-          if (photo_url) {
+          if (photo_url && photo_url.startsWith('http') && photo_url.length <= 120) {
             const descField = cfg.table === 'panchayath_items' ? 'detail' : 'description';
             const cur = withoutPhoto[descField] || '';
-            if (!cur.includes(photo_url)) {
+            if (!cur.includes(photo_url) && (cur.length + photo_url.length + 10) <= 500) {
               withoutPhoto[descField] = cur ? `${cur}\nPhoto: ${photo_url}` : `Photo: ${photo_url}`;
             }
           }
           insertData = withoutPhoto;
           res = await supabase.from(cfg.table).insert(insertData).select('id').single();
+        }
+
+        // If description check constraint fails
+        if (res.error && res.error.message && (res.error.message.includes('description_check') || res.error.message.includes('listings_description_check'))) {
+          console.warn('[Admin Save] description_check constraint violated - shortening description');
+          const descField = cfg.table === 'panchayath_items' ? 'detail' : 'description';
+          let curDesc = insertData[descField] || '';
+          curDesc = curDesc.replace(/Photo:\s*[^\s\n]+/gi, '').trim();
+          insertData = { ...insertData, [descField]: curDesc.slice(0, 300).trim() || null };
+          res = await supabase.from(cfg.table).insert(insertData).select('id').single();
+          if (res.error && res.error.message && (res.error.message.includes('description_check') || res.error.message.includes('listings_description_check'))) {
+            insertData = { ...insertData, [descField]: (insertData.title || 'Service').slice(0, 50) };
+            res = await supabase.from(cfg.table).insert(insertData).select('id').single();
+          }
         }
 
         if (res.error && res.error.message && res.error.message.includes('updated_by')) {
@@ -270,7 +289,7 @@ export default function AdminEdit() {
             let tryRes = await supabase.from(cfg.table).insert({
               ...baseCleaned,
               kind: candKind,
-              description: safeDesc,
+              description: safeDesc ? safeDesc.slice(0, 500) : null,
             }).select('id').single();
 
             if (tryRes.error && tryRes.error.message && tryRes.error.message.includes('status_check')) {
@@ -278,7 +297,7 @@ export default function AdminEdit() {
               tryRes = await supabase.from(cfg.table).insert({
                 ...baseCleaned,
                 kind: candKind,
-                description: safeDesc,
+                description: safeDesc ? safeDesc.slice(0, 500) : null,
                 status: altStatus,
               }).select('id').single();
             }
@@ -292,21 +311,38 @@ export default function AdminEdit() {
         return { error: res.error, rowId: res.data?.id };
       } else {
         let updateData = { ...data };
+        if (updateData.description) {
+          updateData.description = updateData.description.replace(/Photo:\s*data:[^\s\n]+/gi, '').slice(0, 500).trim() || null;
+        }
         let res = await supabase.from(cfg.table).update(updateData).eq('id', id);
 
         // If photo_url column is missing from remote DB schema cache on update
         if (res.error && res.error.message && (res.error.message.includes('photo_url') || res.error.message.includes('schema cache'))) {
-          console.warn('[Admin Save Update] photo_url column not found in schema cache, storing in description fallback');
+          console.warn('[Admin Save Update] photo_url column not found in schema cache, saving without photo_url column');
           const { photo_url, ...withoutPhoto } = updateData;
-          if (photo_url) {
+          if (photo_url && photo_url.startsWith('http') && photo_url.length <= 120) {
             const descField = cfg.table === 'panchayath_items' ? 'detail' : 'description';
             const cur = withoutPhoto[descField] || '';
-            if (!cur.includes(photo_url)) {
+            if (!cur.includes(photo_url) && (cur.length + photo_url.length + 10) <= 500) {
               withoutPhoto[descField] = cur ? `${cur}\nPhoto: ${photo_url}` : `Photo: ${photo_url}`;
             }
           }
           updateData = withoutPhoto;
           res = await supabase.from(cfg.table).update(updateData).eq('id', id);
+        }
+
+        // If description check constraint fails on update
+        if (res.error && res.error.message && (res.error.message.includes('description_check') || res.error.message.includes('listings_description_check'))) {
+          console.warn('[Admin Save Update] description_check constraint violated - shortening description');
+          const descField = cfg.table === 'panchayath_items' ? 'detail' : 'description';
+          let curDesc = updateData[descField] || '';
+          curDesc = curDesc.replace(/Photo:\s*[^\s\n]+/gi, '').trim();
+          updateData = { ...updateData, [descField]: curDesc.slice(0, 300).trim() || null };
+          res = await supabase.from(cfg.table).update(updateData).eq('id', id);
+          if (res.error && res.error.message && (res.error.message.includes('description_check') || res.error.message.includes('listings_description_check'))) {
+            updateData = { ...updateData, [descField]: (updateData.title || 'Service').slice(0, 50) };
+            res = await supabase.from(cfg.table).update(updateData).eq('id', id);
+          }
         }
 
         if (res.error && res.error.message && res.error.message.includes('updated_by')) {
@@ -337,11 +373,19 @@ export default function AdminEdit() {
 
     const result = await executeSave(payload);
     error = result.error;
-    rowId = result.rowId;
+    rowId = result.rowId || id;
 
     if (error) {
       setBusy(false);
       return setMsg(error.message || 'Could not save. Please check the fields and try again.');
+    }
+
+    if (typeof window !== 'undefined' && rowId && payload.photo_url) {
+      try {
+        window.localStorage.setItem(`np_photo_${rowId}`, payload.photo_url);
+      } catch (e) {
+        // ignore
+      }
     }
 
     const changes = {};
@@ -373,6 +417,17 @@ export default function AdminEdit() {
                 <div key={f.name} className="check">
                   <input id={fid} type="checkbox" checked={Boolean(values[f.name])} onChange={set(f.name)} />
                   <label htmlFor={fid}>{f.label}</label>
+                </div>
+              );
+            if (f.type === 'image')
+              return (
+                <div key={f.name} className="field">
+                  <ImageUploadField
+                    id={fid}
+                    value={values[f.name] || ''}
+                    label={`${f.label}${f.required ? ' *' : ''}`}
+                    onChange={(val) => setValues((v) => ({ ...v, [f.name]: val }))}
+                  />
                 </div>
               );
             return (
@@ -434,12 +489,6 @@ export default function AdminEdit() {
                       </div>
                     )}
                   </div>
-                ) : f.type === 'image' ? (
-                  <ImageUploadField
-                    value={values[f.name] || ''}
-                    label={`${f.label}${f.required ? ' *' : ''}`}
-                    onChange={(val) => setValues((v) => ({ ...v, [f.name]: val }))}
-                  />
                 ) : (
                   <input id={fid} type={f.type} value={values[f.name] || ''} onChange={set(f.name)} />
                 )}

@@ -1,22 +1,30 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 
-// Compresses and centers an image onto a square canvas of max 320x320
+// Compresses and center-crops an image onto a square canvas (240x240)
 function processAndCompressImage(file) {
   return new Promise((resolve, reject) => {
-    if (!file.type.startsWith('image/')) {
+    const isImage = file.type?.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|heic)$/i.test(file.name || '');
+    if (!isImage) {
       return reject(new Error('Please select an image file (PNG, JPG, WebP).'));
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const targetDim = 320;
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      try {
+        const targetDim = 240;
         const canvas = document.createElement('canvas');
         canvas.width = targetDim;
         canvas.height = targetDim;
         const ctx = canvas.getContext('2d');
+
+        if (!ctx) {
+          return reject(new Error('Canvas context unavailable.'));
+        }
 
         // Center-crop to square
         const minSide = Math.min(img.width, img.height);
@@ -24,19 +32,32 @@ function processAndCompressImage(file) {
         const sy = (img.height - minSide) / 2;
 
         ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, targetDim, targetDim);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
         resolve(dataUrl);
-      };
-      img.onerror = () => reject(new Error('Could not read image file.'));
-      img.src = e.target.result;
+      } catch (err) {
+        reject(new Error('Failed to process image: ' + (err.message || 'Error')));
+      }
     };
-    reader.onerror = () => reject(new Error('Failed to read file.'));
-    reader.readAsDataURL(file);
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Could not read image file. Please try another image.'));
+    };
+
+    img.src = objectUrl;
   });
 }
 
-export default function ImageUploadField({ value = '', onChange, label = 'Profile Photo / ഫോട്ടോ (optional)' }) {
+export default function ImageUploadField({
+  value = '',
+  onChange,
+  label = 'Profile Photo / ഫോട്ടോ (optional)',
+  id: customId,
+}) {
+  const generatedId = useId();
+  const inputId = customId || `img-upload-${generatedId.replace(/:/g, '')}`;
   const fileInputRef = useRef(null);
+
   const [mode, setMode] = useState('upload'); // 'upload' | 'url'
   const [compressing, setCompressing] = useState(false);
   const [err, setErr] = useState('');
@@ -45,8 +66,8 @@ export default function ImageUploadField({ value = '', onChange, label = 'Profil
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 12 * 1024 * 1024) {
-      setErr('File size is too large (max 12MB).');
+    if (file.size > 15 * 1024 * 1024) {
+      setErr('File size is too large (max 15MB).');
       return;
     }
 
@@ -59,6 +80,8 @@ export default function ImageUploadField({ value = '', onChange, label = 'Profil
       setErr(error.message || 'Failed to process image.');
     } finally {
       setCompressing(false);
+      // Reset input value so the same file can be re-selected if removed
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -73,7 +96,7 @@ export default function ImageUploadField({ value = '', onChange, label = 'Profil
   return (
     <div className="field" style={{ gap: 8 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <label style={{ fontWeight: 600, fontSize: 14.5 }}>{label}</label>
+        <span style={{ fontWeight: 600, fontSize: 14.5 }}>{label}</span>
         <div style={{ display: 'flex', gap: 6 }}>
           <button
             type="button"
@@ -137,13 +160,13 @@ export default function ImageUploadField({ value = '', onChange, label = 'Profil
       ) : (
         <div>
           {mode === 'upload' ? (
-            <div
-              onClick={() => fileInputRef.current?.click()}
+            <label
+              htmlFor={inputId}
               style={{
                 border: '2px dashed var(--accent-border)',
                 background: '#f8fafc',
                 borderRadius: 16,
-                padding: '18px 16px',
+                padding: '20px 16px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -152,23 +175,33 @@ export default function ImageUploadField({ value = '', onChange, label = 'Profil
                 cursor: 'pointer',
                 textAlign: 'center',
                 transition: 'border-color 0.15s ease',
+                position: 'relative',
               }}
             >
               <input
+                id={inputId}
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
                 onChange={handleFileChange}
-                style={{ display: 'none' }}
+                style={{
+                  position: 'absolute',
+                  width: '1px',
+                  height: '1px',
+                  padding: 0,
+                  margin: '-1px',
+                  overflow: 'hidden',
+                  clip: 'rect(0, 0, 0, 0)',
+                  border: 0,
+                }}
               />
               <span
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: 40,
-                  height: 40,
+                  width: 42,
+                  height: 42,
                   borderRadius: 12,
                   background: 'var(--accent-tint)',
                   color: 'var(--primary)',
@@ -188,12 +221,15 @@ export default function ImageUploadField({ value = '', onChange, label = 'Profil
                 )}
               </span>
               <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>
-                {compressing ? 'Optimizing photo...' : 'Tap to upload or take a photo'}
+                {compressing ? 'Optimizing photo...' : 'Tap to choose photo · ഫോട്ടോ തിരഞ്ഞെടുക്കുക'}
               </span>
-              <span className="muted small" style={{ fontSize: 12 }}>
-                Supports camera capture or gallery selection (PNG, JPG, WebP)
+              <span className="btn light" style={{ minHeight: 34, padding: '0 16px', fontSize: 12.5, fontWeight: 700, pointerEvents: 'none' }}>
+                Browse Gallery / Files
               </span>
-            </div>
+              <span className="muted small" style={{ fontSize: 11.5 }}>
+                JPG, PNG, WebP · Max 15MB
+              </span>
+            </label>
           ) : (
             <input
               type="text"

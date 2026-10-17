@@ -8,6 +8,7 @@ import { cleanSearch, formatDate, supabase } from '../../../lib/supabase';
 import { logAudit } from '../../../lib/audit';
 import { useRows } from '../../../lib/useRows';
 import { OUTDATED_DAYS, SECTIONS } from '../../../lib/sections';
+import PersonAvatar from '../../../components/PersonAvatar';
 
 const FILTERS = ['All', 'Live', 'Hidden', 'Outdated'];
 
@@ -120,19 +121,38 @@ export default function AdminList() {
         {actionError ? <p className="error">{actionError}</p> : null}
         {loading ? <p className="muted">Loading...</p> : null}
         {!loading && !error && rows.length === 0 ? <p className="muted">Nothing here.</p> : null}
-        {rows.map((r) => (
-          <article key={r.id} className="card">
-            <div className="cardhead">
-              <div>
-                <h3>{cfg.title(r)}</h3>
-                <p className="muted">{cfg.subtitle(r)}</p>
+        {rows.map((r) => {
+          const localPhoto = typeof window !== 'undefined' ? window.localStorage.getItem(`np_photo_${r.id}`) : null;
+          const photoFromDesc = r.description?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim() || r.detail?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim();
+          const effectivePhoto = r.photo_url || localPhoto || photoFromDesc || '';
+          const hasAvatar = ['workers', 'transport', 'panchayath', 'donors'].includes(section) || Boolean(effectivePhoto);
+
+          return (
+            <article key={r.id} className="card">
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                {hasAvatar && (
+                  <PersonAvatar
+                    src={effectivePhoto}
+                    alt={cfg.title(r)}
+                    category={r.categories?.name || cfg.title(r)}
+                    kind={section === 'workers' ? 'worker' : section === 'transport' ? 'transport' : section === 'panchayath' ? 'panchayath' : 'donor'}
+                    size={46}
+                  />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="cardhead" style={{ marginBottom: 4 }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <h3 style={{ wordBreak: 'break-word', fontSize: 17 }}>{cfg.title(r)}</h3>
+                      <p className="muted">{cfg.subtitle(r)}</p>
+                    </div>
+                    {isCategories ? (
+                      <span className="pill" style={{ textTransform: 'capitalize' }}>{r.kind}</span>
+                    ) : (
+                      <span className={`pill ${r.status !== 'approved' ? 'line' : ''}`}>{r.status !== 'approved' ? 'Hidden' : 'Live'}</span>
+                    )}
+                  </div>
+                </div>
               </div>
-              {isCategories ? (
-                <span className="pill" style={{ textTransform: 'capitalize' }}>{r.kind}</span>
-              ) : (
-                <span className={`pill ${r.status !== 'approved' ? 'line' : ''}`}>{r.status !== 'approved' ? 'Hidden' : 'Live'}</span>
-              )}
-            </div>
             {isCategories ? (
               <p className="muted small">Category ID: #{r.id}</p>
             ) : (
@@ -156,7 +176,8 @@ export default function AdminList() {
               </button>
             </div>
           </article>
-        ))}
+        );
+      })}
         <div className="note"><strong>Delete asks you to confirm first</strong> and is recorded in the activity log. Hide is safer when you may want the item back.</div>
       </main>
     </div>
