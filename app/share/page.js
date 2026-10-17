@@ -272,7 +272,6 @@ function ShareFormInner() {
       const parts = [
         `Vehicle Type: ${selectedChip || 'Transport'}`,
         vehicleModel.trim() && `Vehicle Model / No: ${vehicleModel.trim()}`,
-        photoUrl.trim() && `Photo: ${photoUrl.trim()}`,
         is24Hours && `Service Availability: 24 Hours / 24 മണിക്കൂറും ലഭ്യമാണ്`,
         whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
         details.trim() && `Details: ${details.trim()}`,
@@ -291,7 +290,6 @@ function ShareFormInner() {
       const parts = [
         `Trade / Skill: ${selectedChip || 'Worker'}`,
         experience.trim() && `Work details: ${experience.trim()}`,
-        photoUrl.trim() && `Photo: ${photoUrl.trim()}`,
         whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
         details.trim() && `Extra details: ${details.trim()}`,
       ].filter(Boolean);
@@ -302,7 +300,6 @@ function ShareFormInner() {
       const parts = [
         `Blood Group: ${group}`,
         age.trim() && `Age: ${age.trim()}`,
-        photoUrl.trim() && `Photo: ${photoUrl.trim()}`,
         emergencyReady && `Emergency calls: Ready / അടിയന്തിര ആവശ്യത്തിന് വിളിക്കാം`,
         details.trim() && `Notes: ${details.trim()}`,
       ].filter(Boolean);
@@ -331,14 +328,16 @@ function ShareFormInner() {
       structuredDesc = parts.join('\n');
     }
 
+    const safeDescription = (structuredDesc || finalTitle).slice(0, 500).trim();
+
     const resError = await sendSubmission({
       type,
-      title: finalTitle,
-      description: structuredDesc.slice(1500) ? structuredDesc : (structuredDesc || null),
+      title: finalTitle.slice(0, 120),
+      description: safeDescription,
       phone: phone.trim() || null,
-      area: area.trim() || null,
+      area: area.trim() ? area.trim().slice(0, 80) : null,
       photo_url: photoUrl.trim() || null,
-      submitter_contact: submitterContact.trim() || null,
+      submitter_contact: submitterContact.trim() ? submitterContact.trim().slice(0, 120) : null,
       consent,
     });
 

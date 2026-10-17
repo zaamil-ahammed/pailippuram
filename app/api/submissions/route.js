@@ -181,14 +181,14 @@ export async function POST(req) {
         autoRefreshToken: false,
       },
     });
-    const safeDesc = description?.trim() || title.trim() || 'N/A';
-    const row = {
+    let safeDesc = (description?.trim() || title.trim() || 'N/A').slice(0, 500);
+    let row = {
       type: type || 'other',
-      title: title.trim(),
+      title: title.trim().slice(0, 120),
       description: safeDesc,
-      phone: phone ? phone.trim() : null,
-      area: area ? area.trim() : null,
-      submitter_contact: submitter_contact ? submitter_contact.trim() : null,
+      phone: phone ? phone.trim().slice(0, 20) : null,
+      area: area ? area.trim().slice(0, 80) : null,
+      submitter_contact: submitter_contact ? submitter_contact.trim().slice(0, 120) : null,
       consent: Boolean(consent),
       photo_url: photo_url ? photo_url.trim() : null,
       status: 'pending',
@@ -204,8 +204,35 @@ export async function POST(req) {
     // If remote DB does not yet have photo_url column
     if (error && error.message && error.message.includes('photo_url')) {
       const { photo_url: _discard, ...cleanedRow } = row;
-      const retryRes = await supabase.from('submissions').insert(cleanedRow);
+      row = cleanedRow;
+      const retryRes = await supabase.from('submissions').insert(row);
       error = retryRes.error;
+    }
+
+    // If remote DB check constraint on description length is triggered
+    if (error && error.message && error.message.includes('submissions_description_check')) {
+      console.warn('[Supabase Description Check Fallback] Retrying with shorter description');
+      const shorterRow = {
+        ...row,
+        description: row.description.slice(0, 250),
+      };
+      const retryRes = await supabase.from('submissions').insert(shorterRow);
+      if (!retryRes.error) {
+        error = null;
+        row = shorterRow;
+      } else {
+        const minimalRow = {
+          ...row,
+          description: row.title.slice(0, 60),
+        };
+        const minimalRes = await supabase.from('submissions').insert(minimalRow);
+        if (!minimalRes.error) {
+          error = null;
+          row = minimalRow;
+        } else {
+          error = minimalRes.error;
+        }
+      }
     }
 
     // If the remote database has an older check constraint on `type` (e.g. only business, contact, announcement, correction)
@@ -214,7 +241,7 @@ export async function POST(req) {
       const fallbackRow = {
         ...row,
         type: 'contact',
-        description: `[${(row.type || 'Submission').toUpperCase()}] ${row.description}`.trim(),
+        description: `[${(row.type || 'Submission').toUpperCase()}] ${row.description}`.slice(0, 450).trim(),
       };
       const fallbackRes = await supabase.from('submissions').insert(fallbackRow);
       if (!fallbackRes.error) {
