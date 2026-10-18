@@ -50,7 +50,7 @@ export default function AdminEdit() {
         const { data, error } = await supabase.from(cfg.table).select('*').eq('id', id).maybeSingle();
         if (error || !data) return setMsg('Could not find this item.');
         setOriginal(data);
-        setStatus(data.status);
+        setStatus(data.status === 'hidden' || data.status === 'archived' ? 'hidden' : 'approved');
         const localPhoto = typeof window !== 'undefined' ? window.localStorage.getItem(`np_photo_${id}`) : null;
         const photoFromDesc = data.description?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim()
           || data.detail?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim();
@@ -82,21 +82,6 @@ export default function AdminEdit() {
   }, [section, id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!cfg) return <div className="page"><main className="body"><p>Unknown section.</p></main></div>;
-
-  if (section === 'bus' && isNew) {
-    return (
-      <div className="page">
-        <PageHeader title="Bus timings" ml="ബസ് സമയം" back="/admin/bus" backLabel="Bus routes" />
-        <main className="body">
-          <div className="note">
-            <strong>Adding new bus routes is disabled.</strong>
-            <p>You can edit and update existing bus routes and departure timings from the list.</p>
-          </div>
-          <button type="button" className="btn dark big" onClick={() => router.push('/admin/bus')}>Back to bus routes</button>
-        </main>
-      </div>
-    );
-  }
 
   const set = (name) => (e) => {
     const t = e.target;
@@ -177,15 +162,15 @@ export default function AdminEdit() {
       // The categories table schema is strictly { id, kind, name, name_ml }.
       // Do not attach status, updated_by, verified_at, or body.
     } else {
-      let effectiveStatus = status;
-      if (cfg.table === 'listings' && status === 'hidden') {
-        effectiveStatus = 'archived';
+      payload.status = status === 'hidden' ? 'hidden' : 'approved';
+      if (cfg.table === 'announcements') {
+        if (!payload.body) payload.body = payload.title || 'Details';
+        if (payload.event_date === '') payload.event_date = null;
       }
-      payload.status = effectiveStatus;
-      if (cfg.table === 'announcements' && !payload.body) {
-        payload.body = payload.title || 'Details';
+      const isValidUuid = (val) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+      if (user?.id && isValidUuid(user.id)) {
+        payload.updated_by = user.id;
       }
-      if (user?.id) payload.updated_by = user.id;
       if (cfg.verify && verify) payload.verified_at = new Date().toISOString();
     }
 
@@ -256,6 +241,21 @@ export default function AdminEdit() {
           res = await supabase.from(cfg.table).insert(insertData).select('id').single();
         }
 
+        // If direction column is missing from remote DB schema cache (e.g. bus_routes table)
+        if (res.error && res.error.message && (res.error.message.includes('direction') || res.error.message.includes('schema cache'))) {
+          console.warn('[Admin Save] direction column not found in schema cache, saving without direction column');
+          const { direction, ...withoutDir } = insertData;
+          if (direction) {
+            if (withoutDir.bus_name) {
+              withoutDir.bus_name = `${withoutDir.bus_name} (${direction})`.slice(0, 80);
+            } else if (withoutDir.route && (withoutDir.route.length + direction.length + 4) <= 120) {
+              withoutDir.route = `${withoutDir.route} (${direction})`;
+            }
+          }
+          insertData = withoutDir;
+          res = await supabase.from(cfg.table).insert(insertData).select('id').single();
+        }
+
         // If description check constraint fails
         if (res.error && res.error.message && (res.error.message.includes('description_check') || res.error.message.includes('listings_description_check'))) {
           console.warn('[Admin Save] description_check constraint violated - shortening description');
@@ -270,7 +270,12 @@ export default function AdminEdit() {
           }
         }
 
-        if (res.error && res.error.message && res.error.message.includes('updated_by')) {
+        if (res.error && res.error.message && (
+          res.error.message.includes('updated_by') ||
+          res.error.message.includes('invalid input syntax for type uuid') ||
+          res.error.message.includes('type uuid') ||
+          res.error.message.includes('foreign key')
+        )) {
           const { updated_by, ...cleaned } = insertData;
           insertData = cleaned;
           res = await supabase.from(cfg.table).insert(insertData).select('id').single();
@@ -317,6 +322,9 @@ export default function AdminEdit() {
         return { error: res.error, rowId: createdId };
       } else {
         let updateData = { ...data };
+        if (cfg.table === 'listings' && !updateData.kind) {
+          updateData.kind = original?.kind || cfg.match?.kind || 'business';
+        }
         if (updateData.description) {
           updateData.description = updateData.description.replace(/Photo:\s*data:[^\s\n]+/gi, '').slice(0, 500).trim() || null;
         }
@@ -337,6 +345,21 @@ export default function AdminEdit() {
           res = await supabase.from(cfg.table).update(updateData).eq('id', id);
         }
 
+        // If direction column is missing from remote DB schema cache on update
+        if (res.error && res.error.message && (res.error.message.includes('direction') || res.error.message.includes('schema cache'))) {
+          console.warn('[Admin Save Update] direction column not found in schema cache, saving without direction column');
+          const { direction, ...withoutDir } = updateData;
+          if (direction) {
+            if (withoutDir.bus_name) {
+              withoutDir.bus_name = `${withoutDir.bus_name} (${direction})`.slice(0, 80);
+            } else if (withoutDir.route && (withoutDir.route.length + direction.length + 4) <= 120) {
+              withoutDir.route = `${withoutDir.route} (${direction})`;
+            }
+          }
+          updateData = withoutDir;
+          res = await supabase.from(cfg.table).update(updateData).eq('id', id);
+        }
+
         // If description check constraint fails on update
         if (res.error && res.error.message && (res.error.message.includes('description_check') || res.error.message.includes('listings_description_check'))) {
           console.warn('[Admin Save Update] description_check constraint violated - shortening description');
@@ -351,7 +374,12 @@ export default function AdminEdit() {
           }
         }
 
-        if (res.error && res.error.message && res.error.message.includes('updated_by')) {
+        if (res.error && res.error.message && (
+          res.error.message.includes('updated_by') ||
+          res.error.message.includes('invalid input syntax for type uuid') ||
+          res.error.message.includes('type uuid') ||
+          res.error.message.includes('foreign key')
+        )) {
           const { updated_by, ...cleaned } = updateData;
           updateData = cleaned;
           res = await supabase.from(cfg.table).update(updateData).eq('id', id);
@@ -440,7 +468,51 @@ export default function AdminEdit() {
               <div key={f.name} className="field">
                 <label htmlFor={fid}>{f.label}{f.required ? ' *' : ''}</label>
                 {f.type === 'textarea' ? (
-                  <textarea id={fid} value={values[f.name] || ''} onChange={set(f.name)} />
+                  <>
+                    <textarea
+                      id={fid}
+                      value={values[f.name] || ''}
+                      onChange={set(f.name)}
+                      placeholder={section === 'bus' && f.name === 'times' ? '06:45 AM\n07:30 AM\n08:15 AM\n09:00 AM\n10:15 AM' : ''}
+                      style={{ minHeight: section === 'bus' && f.name === 'times' ? 130 : 90, fontFamily: section === 'bus' && f.name === 'times' ? 'monospace' : 'inherit' }}
+                    />
+                    {section === 'bus' && f.name === 'times' && (
+                      <p className="muted small" style={{ marginTop: 4 }}>
+                        💡 Enter one departure time per line (e.g. 07:30 AM, 08:15 AM, 04:30 PM).
+                      </p>
+                    )}
+                  </>
+                ) : f.name === 'direction' && section === 'bus' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <input
+                      id={fid}
+                      type="text"
+                      value={values[f.name] || ''}
+                      onChange={set(f.name)}
+                      placeholder="e.g. Towards Pattambi (via Thrithala) or തൃത്താല ഭാഗത്തേക്ക്"
+                    />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
+                      <span className="small muted" style={{ alignSelf: 'center', marginRight: 2 }}>Quick suggestions:</span>
+                      {['Towards Pattambi', 'Towards Kuttipuram', 'Towards Thrithala', 'Towards Valanchery', 'Towards Edappal', 'Towards Guruvayur'].map((dir) => (
+                        <button
+                          key={dir}
+                          type="button"
+                          className="chip"
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: 12,
+                            height: 'auto',
+                            background: values[f.name] === dir ? 'var(--primary)' : 'var(--accent-tint)',
+                            color: values[f.name] === dir ? '#fff' : 'var(--primary)',
+                            border: '1px solid var(--accent-border)',
+                          }}
+                          onClick={() => setValues((v) => ({ ...v, [f.name]: dir }))}
+                        >
+                          {dir}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ) : f.type === 'select' ? (
                   <select id={fid} value={values[f.name] || ''} onChange={set(f.name)}>
                     <option value="">Choose...</option>
@@ -449,10 +521,18 @@ export default function AdminEdit() {
                 ) : f.type === 'category' ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <select id={fid} value={values[f.name] ?? ''} onChange={set(f.name)} style={{ flex: 1 }}>
+                      <select
+                        id={fid}
+                        value={values[f.name] != null ? String(values[f.name]) : ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setValues((v) => ({ ...v, [f.name]: val ? (/^\d+$/.test(val) ? Number(val) : val) : null }));
+                        }}
+                        style={{ flex: 1 }}
+                      >
                         <option value="">None / Choose category</option>
                         {cats.rows.map((c) => (
-                          <option key={c.id} value={c.id}>
+                          <option key={c.id} value={String(c.id)}>
                             {c.name}{c.name_ml ? ` (${c.name_ml})` : ''}
                           </option>
                         ))}

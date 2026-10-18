@@ -3,15 +3,32 @@ import { useState } from 'react';
 
 // Maps category, kind or trade names to a tailored SVG icon and color scheme
 function getCategoryIcon(category = '', kind = 'worker') {
-  const c = category.toLowerCase();
+  const catStr = typeof category === 'string' ? category : (category?.name || String(category || ''));
+  const c = catStr.toLowerCase();
+
+  // 0. LOCAL SHOPS / BUSINESS
+  if (kind === 'shop' || kind === 'business' || c.includes('shop') || c.includes('store') || c.includes('supermarket') || c.includes('bakery') || c.includes('pharmacy') || c.includes('കടകൾ') || c.includes('കട')) {
+    return {
+      bg: '#f0fdf4',
+      color: '#16a34a',
+      border: '#bbf7d0',
+      svg: (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+          <path d="M3 6h18" />
+          <path d="M16 10a4 4 0 0 1-8 0" />
+        </svg>
+      ),
+    };
+  }
 
   // 1. BLOOD DONOR
-  if (kind === 'donor' || c.includes('donor') || c.includes('blood') || /^[aböo][+-]$/i.test(category.trim())) {
+  if (kind === 'donor' || c.includes('donor') || c.includes('blood') || /^[aböo][+-]$/i.test(catStr.trim())) {
     return {
       bg: '#fff1f2',
       color: '#e11d48',
       border: '#fecdd3',
-      label: category ? category.toUpperCase() : 'DONOR',
+      label: catStr ? catStr.toUpperCase() : 'DONOR',
       svg: (
         <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 21.5c-3.6 0-6.5-2.9-6.5-6.5 0-3.2 3.8-7.8 5.7-9.9.4-.5 1.2-.5 1.6 0 1.9 2.1 5.7 6.7 5.7 9.9 0 3.6-2.9 6.5-6.5 6.5z" />

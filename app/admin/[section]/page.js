@@ -84,19 +84,34 @@ export default function AdminList() {
   const [actionError, setActionError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
 
-  if (!cfg) return <div className="page"><main className="body"><p>Unknown section.</p></main></div>;
+  if (!cfg) {
+    return (
+      <div className="page">
+        <PageHeader title="Admin" back="/admin" backLabel="Admin" />
+        <main className="body">
+          <div className="card" style={{ padding: 24, textAlign: 'center' }}>
+            <h2>Section not found</h2>
+            <p className="muted">The requested section &ldquo;{section}&rdquo; does not exist.</p>
+            <div style={{ marginTop: 16 }}>
+              <Link href="/admin" className="btn dark">Back to Admin Dashboard</Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   async function toggleHidden(row) {
     setActionError('');
-    const isCurrentlyLive = row.status === 'approved';
-    const nextStatus = isCurrentlyLive ? (cfg.table === 'listings' ? 'archived' : 'hidden') : 'approved';
+    const isCurrentlyLive = row.status === 'approved' || (!row.status && row.status !== 'hidden' && row.status !== 'archived');
+    const nextStatus = isCurrentlyLive ? 'hidden' : 'approved';
     let { error: err } = await supabase.from(cfg.table).update({ status: nextStatus }).eq('id', row.id);
     if (err && err.message && err.message.includes('status_check')) {
       const altStatus = nextStatus === 'hidden' ? 'archived' : 'hidden';
       const altRes = await supabase.from(cfg.table).update({ status: altStatus }).eq('id', row.id);
       err = altRes.error;
     }
-    if (err) return setActionError(err.message || 'Could not save. Please try again.');
+    if (err) return setActionError(err.message || 'Could not update status. Please try again.');
     await logAudit(user, { action: isCurrentlyLive ? 'hide' : 'show', table: cfg.table, rowId: row.id, note: cfg.title(row) });
     reload();
   }
@@ -123,7 +138,23 @@ export default function AdminList() {
         </form>
       </PageHeader>
       <main className="body">
-        {section !== 'bus' && (
+        {section === 'bus' ? (
+          <Link
+            className="btn dark big"
+            href="/admin/bus/new"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect width="16" height="13" x="4" y="3" rx="2" />
+              <path d="M4 11h16" />
+              <path d="M8 3v3" />
+              <path d="M16 3v3" />
+              <circle cx="8" cy="14" r="1" />
+              <circle cx="16" cy="14" r="1" />
+            </svg>
+            + Add Bus Timing · ബസ് സമയം ചേർക്കുക
+          </Link>
+        ) : (
           <Link className="btn dark big" href={`/admin/${section}/new`}>+ Add new {cfg.singular}</Link>
         )}
         <div className="chips">
@@ -131,15 +162,24 @@ export default function AdminList() {
             <button key={f} type="button" className={`chip ${filter === f ? 'on' : ''}`} onClick={() => setFilter(f)}>{f}</button>
           ))}
         </div>
-        {error ? <p className="error">{error}</p> : null}
+        {error ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, marginBottom: 12 }}>
+            <span style={{ color: '#dc2626', fontSize: 13.5 }}>{error}</span>
+            <button type="button" className="btn dark" onClick={() => reload()} style={{ padding: '4px 12px', fontSize: 13, height: 'auto' }}>
+              Retry
+            </button>
+          </div>
+        ) : null}
         {actionError ? <p className="error">{actionError}</p> : null}
         {loading ? <p className="muted">Loading...</p> : null}
         {!loading && !error && displayRows.length === 0 ? <p className="muted">Nothing here.</p> : null}
         {displayRows.map((r) => {
+          if (!r) return null;
           const localPhoto = typeof window !== 'undefined' ? window.localStorage.getItem(`np_photo_${r.id}`) : null;
           const photoFromDesc = r.description?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim() || r.detail?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim();
           const effectivePhoto = r.photo_url || localPhoto || photoFromDesc || '';
           const hasAvatar = ['workers', 'transport', 'panchayath', 'donors'].includes(section) || Boolean(effectivePhoto);
+          const isHidden = r.status === 'hidden' || r.status === 'archived';
 
           return (
             <article key={r.id} className="card">
@@ -149,7 +189,7 @@ export default function AdminList() {
                     src={effectivePhoto}
                     alt={cfg.title(r)}
                     category={r.categories?.name || cfg.title(r)}
-                    kind={section === 'workers' ? 'worker' : section === 'transport' ? 'transport' : section === 'panchayath' ? 'panchayath' : 'donor'}
+                    kind={section === 'workers' ? 'worker' : section === 'transport' ? 'transport' : section === 'panchayath' ? 'panchayath' : section === 'shops' ? 'shop' : 'donor'}
                     size={46}
                   />
                 )}
@@ -162,7 +202,7 @@ export default function AdminList() {
                     {isCategories ? (
                       <span className="pill" style={{ textTransform: 'capitalize' }}>{r.kind}</span>
                     ) : (
-                      <span className={`pill ${r.status !== 'approved' ? 'line' : ''}`}>{r.status !== 'approved' ? 'Hidden' : 'Live'}</span>
+                      <span className={`pill ${isHidden ? 'line' : ''}`}>{isHidden ? 'Hidden' : 'Live'}</span>
                     )}
                   </div>
                 </div>
@@ -178,7 +218,7 @@ export default function AdminList() {
             <div className="btnrow">
               <Link className="btn dark" href={`/admin/${section}/${r.id}`}>Edit</Link>
               {!isCategories && (
-                <button type="button" className="btn" onClick={() => toggleHidden(r)}>{r.status !== 'approved' ? 'Show' : 'Hide'}</button>
+                <button type="button" className="btn" onClick={() => toggleHidden(r)}>{isHidden ? 'Show' : 'Hide'}</button>
               )}
               <button
                 type="button"

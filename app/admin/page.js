@@ -18,38 +18,45 @@ export default function AdminHome() {
   const [outdated, setOutdated] = useState(0);
 
   const queue = useRows((s) => s.from('submissions').select('*').eq('status', 'pending').order('created_at', { ascending: false }), []);
-  const waiting = [...queue.rows].sort((a, b) => (b.type === 'removal') - (a.type === 'removal'));
+  const waiting = Array.isArray(queue.rows)
+    ? [...queue.rows].sort((a, b) => (b.type === 'removal') - (a.type === 'removal'))
+    : [];
 
   useEffect(() => {
     (async () => {
-      const next = {};
-      let stale = 0;
-      for (const key of SECTION_KEYS) {
-        const cfg = SECTIONS[key];
-        let all = supabase.from(cfg.table).select('id', { count: 'exact', head: true });
-        let old = supabase.from(cfg.table).select('id', { count: 'exact', head: true }).eq('status', 'approved')
-          .or(`verified_at.is.null,verified_at.lt.${outdatedCutoff()}`);
-        if (key === 'transport') {
-          all = all.or('kind.eq.transport,description.ilike.%[TRANSPORT]%,description.ilike.%auto%,description.ilike.%taxi%');
-          old = old.or('kind.eq.transport,description.ilike.%[TRANSPORT]%,description.ilike.%auto%,description.ilike.%taxi%');
-        } else if (key === 'workers') {
-          all = all.or('kind.eq.worker,description.ilike.%[WORKER]%');
-          old = old.or('kind.eq.worker,description.ilike.%[WORKER]%');
-        } else if (key === 'shops') {
-          all = all.or('kind.eq.business,kind.eq.shop');
-          old = old.or('kind.eq.business,kind.eq.shop');
-        } else {
-          for (const [k, v] of Object.entries(cfg.match)) {
-            all = all.eq(k, v);
-            old = old.eq(k, v);
+      try {
+        const next = {};
+        let stale = 0;
+        for (const key of SECTION_KEYS) {
+          const cfg = SECTIONS[key];
+          if (!cfg) continue;
+          let all = supabase.from(cfg.table).select('id', { count: 'exact', head: true });
+          let old = supabase.from(cfg.table).select('id', { count: 'exact', head: true }).eq('status', 'approved')
+            .or(`verified_at.is.null,verified_at.lt.${outdatedCutoff()}`);
+          if (key === 'transport') {
+            all = all.or('kind.eq.transport,description.ilike.%[TRANSPORT]%,description.ilike.%auto%,description.ilike.%taxi%');
+            old = old.or('kind.eq.transport,description.ilike.%[TRANSPORT]%,description.ilike.%auto%,description.ilike.%taxi%');
+          } else if (key === 'workers') {
+            all = all.or('kind.eq.worker,description.ilike.%[WORKER]%');
+            old = old.or('kind.eq.worker,description.ilike.%[WORKER]%');
+          } else if (key === 'shops') {
+            all = all.or('kind.eq.business,kind.eq.shop');
+            old = old.or('kind.eq.business,kind.eq.shop');
+          } else {
+            for (const [k, v] of Object.entries(cfg.match || {})) {
+              all = all.eq(k, v);
+              old = old.eq(k, v);
+            }
           }
+          const [a, o] = await Promise.all([all, cfg.verify ? old : Promise.resolve({ count: 0 })]);
+          next[key] = a.count || 0;
+          stale += o.count || 0;
         }
-        const [a, o] = await Promise.all([all, cfg.verify ? old : Promise.resolve({ count: 0 })]);
-        next[key] = a.count || 0;
-        stale += o.count || 0;
+        setCounts(next);
+        setOutdated(stale);
+      } catch (err) {
+        console.error('Error fetching admin counts:', err);
       }
-      setCounts(next);
-      setOutdated(stale);
     })();
   }, []);
 

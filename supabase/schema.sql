@@ -9,6 +9,7 @@ alter table if exists listings add column if not exists photo_url text;
 alter table if exists panchayath_items add column if not exists photo_url text;
 alter table if exists donors add column if not exists photo_url text;
 alter table if exists submissions add column if not exists photo_url text;
+alter table if exists bus_routes add column if not exists direction text;
 notify pgrst, 'reload schema';
 
 -- ---------- Tables ----------
@@ -53,6 +54,7 @@ create table if not exists announcements (
 create table if not exists bus_routes (
   id uuid primary key default gen_random_uuid(),
   route text not null check (char_length(route) between 2 and 120),
+  direction text check (char_length(direction) <= 80),
   bus_name text check (char_length(bus_name) <= 80),
   times text check (char_length(times) <= 800),
   status text not null default 'approved' check (status in ('approved', 'hidden')),
