@@ -2,11 +2,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import PageHeader from '../../components/PageHeader';
-import { formatDate } from '../../lib/supabase';
+import { formatDate, extractAllPhones } from '../../lib/supabase';
 import { BLOOD_GROUPS } from '../../lib/sections';
 import { useRows } from '../../lib/useRows';
 import { shareServiceOrApp } from '../../lib/share';
-import PersonAvatar from '../../components/PersonAvatar';
 
 export default function Donors() {
   const [group, setGroup] = useState('');
@@ -60,56 +59,49 @@ export default function Donors() {
         {loading ? <p className="muted">Loading...</p> : null}
         {!loading && !error && rows.length === 0 ? <p className="muted">No donors found for this group.</p> : null}
         {rows.map((d) => {
-          const photoFromArea = d.area?.match(/Photo:\s*([^\s\n]+)/i)?.[1]?.trim();
-          const effectivePhoto = d.photo_url || photoFromArea || '';
-          const cleanArea = d.area ? d.area.replace(/Photo:\s*[^\s\n]+/gi, '').trim() : '';
+          const donorPhones = extractAllPhones(d);
+          const cleanArea = d.area?.replace(/(?:·|\s)*Alt:\s*[+0-9\s,-]+/gi, '').trim();
+
           return (
             <article key={d.id} className="card">
-              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                <PersonAvatar
-                  src={effectivePhoto}
-                  alt={d.name}
-                  category={d.blood_group}
-                  kind="donor"
-                  size={70}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="cardhead">
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <h3 style={{ wordBreak: 'break-word' }}>{d.name}</h3>
-                      <p className="muted" style={{ fontSize: 13.5 }}>{cleanArea}</p>
-                    </div>
-                  <span className="group" style={{ flexShrink: 0 }}>{d.blood_group}</span>
+              <div className="cardhead">
+                <div>
+                  <h3>{d.name}</h3>
+                  <p className="muted">{cleanArea || d.area}</p>
                 </div>
-                {d.verified_at ? <p className="muted small" style={{ marginTop: 4 }}>Checked {formatDate(d.verified_at)}</p> : null}
+                <span className="group">{d.blood_group}</span>
               </div>
-            </div>
-            <div className="btnrow">
-              {d.phone ? <a className="btn dark" href={`tel:${d.phone}`}>Call {d.phone}</a> : null}
-              {d.phone ? (
-                <button
-                  type="button"
-                  className="btn light"
-                  onClick={() =>
-                    shareServiceOrApp({
-                      title: `Blood Donor: ${d.name} (${d.blood_group})`,
-                      text: `🩸 Blood Donor (${d.blood_group}): ${d.name}${d.area ? ', ' + d.area : ''} - Ph: ${d.phone}`,
-                      url: typeof window !== 'undefined' ? `${window.location.origin}/donors?id=${d.id}#item-${d.id}` : '',
-                    })
-                  }
-                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-                  </svg>
-                  Share contact
-                </button>
-              ) : null}
-            </div>
-          </article>
-        );
-      })}
+              {d.verified_at ? <p className="muted small">Checked {formatDate(d.verified_at)}</p> : null}
+              <div className="btnrow">
+                {donorPhones.map((p, idx) => (
+                  <a key={idx} className="btn dark" href={`tel:${p.replace(/\D/g, '')}`}>
+                    {donorPhones.length > 1 ? `Call (${idx + 1}): ${p}` : `Call ${p}`}
+                  </a>
+                ))}
+                {donorPhones.length > 0 ? (
+                  <button
+                    type="button"
+                    className="btn light"
+                    onClick={() =>
+                      shareServiceOrApp({
+                        title: `Blood Donor: ${d.name} (${d.blood_group})`,
+                        text: `🩸 Blood Donor (${d.blood_group}): ${d.name}${d.area ? ', ' + d.area : ''} - Ph: ${donorPhones.join(', ')}`,
+                        url: typeof window !== 'undefined' ? `${window.location.origin}/donors?id=${d.id}#item-${d.id}` : '',
+                      })
+                    }
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                    </svg>
+                    Share contact
+                  </button>
+                ) : null}
+              </div>
+            </article>
+          );
+        })}
         <p className="muted small">Want to be a donor? Use “Share information” in the menu. We only list people who say yes.</p>
       </main>
     </div>

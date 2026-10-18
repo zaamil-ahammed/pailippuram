@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { MenuButton } from '../../components/PageHeader';
 import { useAdmin } from '../../components/AdminGate';
-import { supabase, formatDate } from '../../lib/supabase';
+import { supabase, formatDate, extractAllPhones } from '../../lib/supabase';
 import { logAudit } from '../../lib/audit';
 import { useRows } from '../../lib/useRows';
 import { OUTDATED_DAYS, SECTIONS, SECTION_KEYS, SUBMISSION_LABEL, SUBMISSION_SECTION, getSubmissionSection, getSubmissionLabel } from '../../lib/sections';
@@ -113,7 +113,14 @@ export default function AdminHome() {
               <h3>{r.title}</h3>
               {r.description ? <p style={{ whiteSpace: 'pre-line' }}>{r.description}</p> : null}
               <p className="small">
-                {[r.phone && `Phone: ${r.phone}`, r.area && `Area: ${r.area}`, r.submitter_contact && `Their contact (private): ${r.submitter_contact}`].filter(Boolean).join(' · ')}
+                {(() => {
+                  const itemPhones = extractAllPhones(r);
+                  return [
+                    itemPhones.length > 0 ? `Phone${itemPhones.length > 1 ? 's' : ''}: ${itemPhones.join(', ')}` : (r.phone && `Phone: ${r.phone}`),
+                    r.area && `Area: ${r.area}`,
+                    r.submitter_contact && `Their contact (private): ${r.submitter_contact}`,
+                  ].filter(Boolean).join(' · ');
+                })()}
               </p>
               <div className="btnrow">
                 {sec ? (

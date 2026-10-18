@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Brand, MenuButton, SharePageButton } from '../components/PageHeader';
-import { formatDate, isConfigured } from '../lib/supabase';
+import { formatDate, isConfigured, isPinnedAnnouncement, cleanAnnouncementBody, cleanAnnouncementTitle } from '../lib/supabase';
 import { useRows } from '../lib/useRows';
 
 const TILES = [
@@ -104,6 +104,7 @@ const TILES = [
     bg: '#f8fafc',
     iconColor: '#0f172a',
     border: '#e2e8f0',
+    span: true,
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <line x1="3" y1="21" x2="21" y2="21" />
@@ -115,29 +116,19 @@ const TILES = [
       </svg>
     ),
   },
-  {
-    href: '/announcements',
-    label: 'Announcements',
-    ml: 'അറിയിപ്പുകൾ',
-    bg: '#faf5ff',
-    iconColor: '#9333ea',
-    border: '#f3e8ff',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="m3 11 18-5v12L3 14v-3z" />
-        <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
-      </svg>
-    ),
-  },
 ];
 
 export default function Home() {
   const router = useRouter();
   const [q, setQ] = useState('');
-  const news = useRows(
-    (s) => s.from('announcements').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(3),
-    []
-  );
+  const news = useRows((s) => s.from('announcements').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(6), []);
+
+  const sortedNews = [...news.rows].sort((a, b) => {
+    const aPin = isPinnedAnnouncement(a) ? 1 : 0;
+    const bPin = isPinnedAnnouncement(b) ? 1 : 0;
+    if (aPin !== bPin) return bPin - aPin;
+    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+  }).slice(0, 3);
 
   return (
     <div className="page">
@@ -157,22 +148,14 @@ export default function Home() {
           }}
         >
           <label htmlFor="hq" className="hp">Search</label>
-          <input
-            id="hq"
-            type="search"
-            placeholder="Search shops and services"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
+          <input id="hq" type="search" placeholder="Search shops and services" value={q} onChange={(e) => setQ(e.target.value)} />
         </form>
       </header>
-
       <main className="body">
         {!isConfigured ? (
           <p className="error">The database is not connected yet. See the README, step 3.</p>
         ) : null}
 
-        {/* The classic 2-column menu tiles */}
         <div className="grid2" style={{ gap: 10 }}>
           {TILES.map((t) => (
             <Link
@@ -180,47 +163,72 @@ export default function Home() {
               href={t.href}
               className="tile"
               style={{
-                minHeight: 94,
-                padding: '12px 14px',
+                minHeight: t.span ? 68 : 94,
+                padding: t.span ? '12px 16px' : '12px 14px',
                 borderRadius: 18,
                 background: '#ffffff',
                 border: '1.5px solid var(--card-border)',
                 boxShadow: '0 1px 3px rgba(15, 23, 42, 0.02)',
                 display: 'flex',
-                flexDirection: 'column',
+                flexDirection: t.span ? 'row' : 'column',
                 justifyContent: 'space-between',
-                alignItems: 'flex-start',
+                alignItems: t.span ? 'center' : 'flex-start',
+                ...(t.span ? { gridColumn: 'span 2' } : {}),
               }}
             >
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  background: t.bg,
-                  color: t.iconColor,
-                  border: `1px solid ${t.border}`,
-                }}
-              >
-                {t.icon}
-              </span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 8, width: '100%' }}>
-                <span style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', lineHeight: 1.25 }}>{t.ml}</span>
-                <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 500, lineHeight: 1.2 }}>{t.label}</span>
-              </div>
+              {t.span ? (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 38,
+                        height: 38,
+                        borderRadius: 12,
+                        background: t.bg,
+                        color: t.iconColor,
+                        border: `1px solid ${t.border}`,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {t.icon}
+                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>{t.ml}</span>
+                      <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>{t.label}</span>
+                    </div>
+                  </div>
+                  <span aria-hidden="true" style={{ fontSize: 20, color: 'var(--primary)', opacity: 0.5 }}>&#8250;</span>
+                </>
+              ) : (
+                <>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: t.bg,
+                      color: t.iconColor,
+                      border: `1px solid ${t.border}`,
+                    }}
+                  >
+                    {t.icon}
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 8, width: '100%' }}>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', lineHeight: 1.25 }}>{t.ml}</span>
+                    <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 500, lineHeight: 1.2 }}>{t.label}</span>
+                  </div>
+                </>
+              )}
             </Link>
           ))}
         </div>
-
-        {/* Share Information Action Tile */}
-        <Link
-          href="/share"
-          className="tile dash"
-          style={{ minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}
-        >
+        <Link href="/share" className="tile dash" style={{ minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="16" />
@@ -229,23 +237,92 @@ export default function Home() {
           <span style={{ fontWeight: 700 }}>Share information · വിവരം പങ്കിടുക</span>
         </Link>
 
-        {/* Latest Announcements */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-          <h2 style={{ margin: 0 }}>Latest announcements</h2>
-          <Link href="/announcements" style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
-            View all &rarr;
-          </Link>
-        </div>
-        {news.rows.length === 0 && !news.loading ? <p className="muted">No announcements yet.</p> : null}
-        {news.rows.map((n) => (
-          <Link href="/announcements" key={n.id} className="card">
-            <h3>{n.title}</h3>
-            {n.event_date ? <p className="muted small">{formatDate(n.event_date)}</p> : null}
-            {n.body ? <p>{n.body.length > 140 ? `${n.body.slice(0, 140)}...` : n.body}</p> : null}
-          </Link>
-        ))}
+        <h2>Latest announcements</h2>
+        {sortedNews.length === 0 && !news.loading ? <p className="muted">No announcements yet.</p> : null}
+        {sortedNews.map((n) => {
+          const pinned = isPinnedAnnouncement(n);
+          const cleanTitle = cleanAnnouncementTitle(n.title);
+          const cleanBody = cleanAnnouncementBody(n.body);
+          return (
+            <Link
+              href="/announcements"
+              key={n.id}
+              className="card"
+              style={
+                pinned
+                  ? {
+                      borderColor: '#f59e0b',
+                      background: 'linear-gradient(180deg, #fffdfa 0%, #ffffff 100%)',
+                      boxShadow: '0 4px 14px rgba(245, 158, 11, 0.1)',
+                    }
+                  : {}
+              }
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                <h3 style={pinned ? { color: '#78350f', fontWeight: 800 } : {}}>{cleanTitle}</h3>
+                {pinned && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      background: '#fef3c7',
+                      color: '#92400e',
+                      padding: '2px 8px',
+                      borderRadius: 999,
+                      border: '1px solid #fde68a',
+                      flexShrink: 0,
+                    }}
+                  >
+                    📌 Pinned
+                  </span>
+                )}
+              </div>
+              {n.event_date ? <p className="muted small">{formatDate(n.event_date)}</p> : null}
+              {cleanBody ? <p>{cleanBody.length > 140 ? `${cleanBody.slice(0, 140)}...` : cleanBody}</p> : null}
+            </Link>
+          );
+        })}
 
-        {/* Village Trust Note */}
+        <Link
+          href="/announcements"
+          className="tile"
+          style={{
+            minHeight: 64,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '14px 18px',
+            borderRadius: 18,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                background: '#eff6ff',
+                color: 'var(--primary)',
+                border: '1px solid #dbeafe',
+                flexShrink: 0,
+              }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m3 11 18-5v12L3 14v-3z" />
+                <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+              </svg>
+            </span>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: 16, fontWeight: 800 }}>അറിയിപ്പുകൾ</span>
+              <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 500 }}>All announcements</span>
+            </div>
+          </div>
+          <span aria-hidden="true" style={{ fontSize: 20, color: 'var(--primary)', opacity: 0.6 }}>&#8250;</span>
+        </Link>
+
         <div className="note">
           <strong>Checked by people from the village.</strong> Each listing shows when it was last checked. If something
           is wrong, <Link href="/correction" style={{ textDecoration: 'underline' }}>request a correction</Link>.

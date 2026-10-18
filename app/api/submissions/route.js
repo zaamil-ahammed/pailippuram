@@ -152,7 +152,7 @@ export async function POST(req) {
     }
 
     // Direct form submission flow
-    const { type, title, description, phone, area, submitter_contact, consent, photo_url } = body;
+    const { type, title, description, phone, area, submitter_contact, consent } = body;
 
     if (!title || title.trim().length < 2) {
       return NextResponse.json({ ok: false, error: 'Please provide a valid title.' }, { status: 400 });
@@ -160,19 +160,10 @@ export async function POST(req) {
 
     const supabaseKey = supabaseServiceKey || supabaseAnonKey;
     if (!supabaseUrl || !supabaseKey) {
-      console.log('[Submissions API] Supabase credentials not set; submission accepted in mock/demo mode.');
-      sendAlertEmail({
-        type: type || 'other',
-        title: title.trim(),
-        description: description?.trim() || title.trim() || 'N/A',
-        phone: phone ? phone.trim() : null,
-        area: area ? area.trim() : null,
-        submitter_contact: submitter_contact ? submitter_contact.trim() : null,
-        consent: Boolean(consent),
-        photo_url: photo_url ? photo_url.trim() : null,
-        created_at: new Date().toISOString(),
-      }).catch((err) => console.error('[Async Email Error]', err));
-      return NextResponse.json({ ok: true, mocked: true });
+      return NextResponse.json(
+        { ok: false, error: 'Database is not configured yet. Please check .env.local' },
+        { status: 503 }
+      );
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -181,16 +172,28 @@ export async function POST(req) {
         autoRefreshToken: false,
       },
     });
-    let safeDesc = (description?.trim() || title.trim() || 'N/A').slice(0, 500);
-    let row = {
+    let cleanPhone = phone ? phone.trim() : null;
+    let safeDesc = description?.trim() || title.trim() || 'N/A';
+
+    if (cleanPhone && cleanPhone.length > 20) {
+      const parts = cleanPhone.split(/[,/;\n]/).map((p) => p.trim()).filter(Boolean);
+      cleanPhone = parts[0]?.slice(0, 20) || null;
+      if (parts.length > 1) {
+        const extraText = `Alt Phones: ${parts.slice(1).join(', ')}`;
+        if (!safeDesc.includes('Alt Phones:')) {
+          safeDesc = `${safeDesc}\n${extraText}`;
+        }
+      }
+    }
+
+    const row = {
       type: type || 'other',
-      title: title.trim().slice(0, 120),
+      title: title.trim(),
       description: safeDesc,
-      phone: phone ? phone.trim().slice(0, 20) : null,
-      area: area ? area.trim().slice(0, 80) : null,
-      submitter_contact: submitter_contact ? submitter_contact.trim().slice(0, 120) : null,
+      phone: cleanPhone,
+      area: area ? area.trim() : null,
+      submitter_contact: submitter_contact ? submitter_contact.trim() : null,
       consent: Boolean(consent),
-      photo_url: photo_url ? photo_url.trim() : null,
       status: 'pending',
     };
 
@@ -201,38 +204,15 @@ export async function POST(req) {
     // "new row violates row-level security policy for table 'submissions'".
     let { error } = await supabase.from('submissions').insert(row);
 
-    // If remote DB does not yet have photo_url column
-    if (error && error.message && error.message.includes('photo_url')) {
-      const { photo_url: _discard, ...cleanedRow } = row;
-      row = cleanedRow;
-      const retryRes = await supabase.from('submissions').insert(row);
-      error = retryRes.error;
-    }
-
-    // If remote DB check constraint on description length is triggered
-    if (error && error.message && error.message.includes('submissions_description_check')) {
-      console.warn('[Supabase Description Check Fallback] Retrying with shorter description');
-      const shorterRow = {
+    // If phone check constraint fails
+    if (error && error.message && error.message.includes('submissions_phone_check')) {
+      const fallbackRow = {
         ...row,
-        description: row.description.slice(0, 250),
+        phone: row.phone ? row.phone.slice(0, 15) : null,
       };
-      const retryRes = await supabase.from('submissions').insert(shorterRow);
-      if (!retryRes.error) {
-        error = null;
-        row = shorterRow;
-      } else {
-        const minimalRow = {
-          ...row,
-          description: row.title.slice(0, 60),
-        };
-        const minimalRes = await supabase.from('submissions').insert(minimalRow);
-        if (!minimalRes.error) {
-          error = null;
-          row = minimalRow;
-        } else {
-          error = minimalRes.error;
-        }
-      }
+      const res = await supabase.from('submissions').insert(fallbackRow);
+      if (!res.error) error = null;
+      else error = res.error;
     }
 
     // If the remote database has an older check constraint on `type` (e.g. only business, contact, announcement, correction)
@@ -241,7 +221,7 @@ export async function POST(req) {
       const fallbackRow = {
         ...row,
         type: 'contact',
-        description: `[${(row.type || 'Submission').toUpperCase()}] ${row.description}`.slice(0, 450).trim(),
+        description: `[${(row.type || 'Submission').toUpperCase()}] ${row.description}`.trim(),
       };
       const fallbackRes = await supabase.from('submissions').insert(fallbackRow);
       if (!fallbackRes.error) {
