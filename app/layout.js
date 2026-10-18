@@ -48,7 +48,7 @@ export default function RootLayout({ children }) {
             </span>
             <span style={{ textAlign: 'center' }}>
               A{' '}
-              <Link href="https://www.instagram.com/victory_pailippuram" target="_blank" rel="noopener noreferrer">
+              <Link href="/victory">
                 <strong>Victory</strong>
               </Link>{' '}
               Initiative · Crafted by{' '}

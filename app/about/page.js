@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import PageHeader from '../../components/PageHeader';
 
 export const metadata = { title: 'About and privacy | Nammude Pailippuram' };
@@ -17,7 +18,10 @@ export default function About() {
         <section className="card">
           <h2>About Us</h2>
           <p>
-            <strong>Nammude Pailippuram</strong> is a digital community platform created to connect the people of Pailippuram, Chembra, Palakkad, Kerala by Victory arts & sports club, Pailippuram
+            <strong>Nammude Pailippuram</strong> is a digital community platform created to connect the people of Pailippuram, Chembra, Palakkad, Kerala by{' '}
+            <Link href="/victory" style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'underline' }}>
+              Victory Arts &amp; Sports Club, Pailippuram
+            </Link>.
           </p>
           <p>
             Our aim is to bring useful local information, businesses, skilled workers, transportation services, and public information together in one convenient place.
