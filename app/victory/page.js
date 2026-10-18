@@ -1,4 +1,16 @@
-'use client';
+"use client"; // Must be at the very top
+
+export default function VictoryPage() {
+  const handleClick = () => {
+    console.log("Victory!");
+  };
+
+  return (
+    <button onClick={handleClick}>
+      Celebrate
+    </button>
+  );
+}
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
