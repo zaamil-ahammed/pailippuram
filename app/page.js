@@ -104,7 +104,6 @@ const TILES = [
     bg: '#f8fafc',
     iconColor: '#0f172a',
     border: '#e2e8f0',
-    span: true,
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <line x1="3" y1="21" x2="21" y2="21" />
@@ -113,6 +112,20 @@ const TILES = [
         <line x1="7" y1="10" x2="7" y2="21" />
         <line x1="12" y1="10" x2="12" y2="21" />
         <line x1="17" y1="10" x2="17" y2="21" />
+      </svg>
+    ),
+  },
+  {
+    href: '/announcements',
+    label: 'Announcements',
+    ml: 'അറിയിപ്പുകൾ',
+    bg: '#eff6ff',
+    iconColor: '#2563eb',
+    border: '#dbeafe',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m3 11 18-5v12L3 14v-3z" />
+        <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
       </svg>
     ),
   },
@@ -163,68 +176,37 @@ export default function Home() {
               href={t.href}
               className="tile"
               style={{
-                minHeight: t.span ? 68 : 94,
-                padding: t.span ? '12px 16px' : '12px 14px',
+                minHeight: 94,
+                padding: '12px 14px',
                 borderRadius: 18,
                 background: '#ffffff',
                 border: '1.5px solid var(--card-border)',
                 boxShadow: '0 1px 3px rgba(15, 23, 42, 0.02)',
                 display: 'flex',
-                flexDirection: t.span ? 'row' : 'column',
+                flexDirection: 'column',
                 justifyContent: 'space-between',
-                alignItems: t.span ? 'center' : 'flex-start',
-                ...(t.span ? { gridColumn: 'span 2' } : {}),
+                alignItems: 'flex-start',
               }}
             >
-              {t.span ? (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 38,
-                        height: 38,
-                        borderRadius: 12,
-                        background: t.bg,
-                        color: t.iconColor,
-                        border: `1px solid ${t.border}`,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {t.icon}
-                    </span>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>{t.ml}</span>
-                      <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>{t.label}</span>
-                    </div>
-                  </div>
-                  <span aria-hidden="true" style={{ fontSize: 20, color: 'var(--primary)', opacity: 0.5 }}>&#8250;</span>
-                </>
-              ) : (
-                <>
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 36,
-                      height: 36,
-                      borderRadius: 10,
-                      background: t.bg,
-                      color: t.iconColor,
-                      border: `1px solid ${t.border}`,
-                    }}
-                  >
-                    {t.icon}
-                  </span>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 8, width: '100%' }}>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', lineHeight: 1.25 }}>{t.ml}</span>
-                    <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 500, lineHeight: 1.2 }}>{t.label}</span>
-                  </div>
-                </>
-              )}
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: t.bg,
+                  color: t.iconColor,
+                  border: `1px solid ${t.border}`,
+                }}
+              >
+                {t.icon}
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 8, width: '100%' }}>
+                <span style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', lineHeight: 1.25 }}>{t.ml}</span>
+                <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 500, lineHeight: 1.2 }}>{t.label}</span>
+              </div>
             </Link>
           ))}
         </div>
@@ -237,7 +219,12 @@ export default function Home() {
           <span style={{ fontWeight: 700 }}>Share information · വിവരം പങ്കിടുക</span>
         </Link>
 
-        <h2>Latest announcements</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+          <h2>Latest announcements</h2>
+          <Link href="/announcements" style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>
+            View all · എല്ലാം കാണുക →
+          </Link>
+        </div>
         {sortedNews.length === 0 && !news.loading ? <p className="muted">No announcements yet.</p> : null}
         {sortedNews.map((n) => {
           const pinned = isPinnedAnnouncement(n);
@@ -282,46 +269,6 @@ export default function Home() {
             </Link>
           );
         })}
-
-        <Link
-          href="/announcements"
-          className="tile"
-          style={{
-            minHeight: 64,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '14px 18px',
-            borderRadius: 18,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                background: '#eff6ff',
-                color: 'var(--primary)',
-                border: '1px solid #dbeafe',
-                flexShrink: 0,
-              }}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m3 11 18-5v12L3 14v-3z" />
-                <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
-              </svg>
-            </span>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: 16, fontWeight: 800 }}>അറിയിപ്പുകൾ</span>
-              <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 500 }}>All announcements</span>
-            </div>
-          </div>
-          <span aria-hidden="true" style={{ fontSize: 20, color: 'var(--primary)', opacity: 0.6 }}>&#8250;</span>
-        </Link>
 
         <div className="note">
           <strong>Checked by people from the village.</strong> Each listing shows when it was last checked. If something
