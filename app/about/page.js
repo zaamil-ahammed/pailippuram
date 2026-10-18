@@ -8,9 +8,9 @@ export default function About() {
     <div className="page">
       <PageHeader title="About and privacy" ml="സ്വകാര്യത" />
       <main className="body">
-        <header className="card" style={{ textAlign: 'center', padding: '24px 18px', background: 'linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%)' }}>
+        <header className="card" style={{ textAlign: 'center', padding: '24px 18px', background: 'linear-gradient(180deg, #ffffff 0%, #faf8f5 100%)', border: '1px solid var(--accent-border)' }}>
           <h1 style={{ fontSize: '24px', marginBottom: '8px' }}>Nammude Pailippuram</h1>
-          <div className="tagline muted" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--primary)' }}>
+          <div className="tagline muted" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--gold-dark)' }}>
             നമ്മുടെ പൈലിപ്പുറം — നമ്മുടെ നാട്, നമ്മുടെ കൂട്ടായ്മ
           </div>
         </header>
@@ -19,7 +19,7 @@ export default function About() {
           <h2>About Us</h2>
           <p>
             <strong>Nammude Pailippuram</strong> is a digital community platform created to connect the people of Pailippuram, Chembra, Palakkad, Kerala by{' '}
-            <Link href="/victory" style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'underline' }}>
+            <Link href="/victory" style={{ color: 'var(--gold-dark)', fontWeight: 700, textDecoration: 'underline' }}>
               Victory Arts &amp; Sports Club, Pailippuram
             </Link>.
           </p>
@@ -38,31 +38,31 @@ export default function About() {
         <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <h2>What We Offer</h2>
           <div className="service">
-            <h3 style={{ fontSize: '16px', color: 'var(--primary)' }}>1. Important Contacts</h3>
+            <h3 style={{ fontSize: '16px', color: 'var(--gold-dark)' }}>1. Important Contacts</h3>
             <p className="muted" style={{ fontSize: '14px' }}>
               Find essential contacts for emergency services, healthcare facilities, government offices, and other important public services.
             </p>
           </div>
           <div className="service">
-            <h3 style={{ fontSize: '16px', color: 'var(--primary)' }}>2. Local Shops</h3>
+            <h3 style={{ fontSize: '16px', color: 'var(--gold-dark)' }}>2. Local Shops</h3>
             <p className="muted" style={{ fontSize: '14px' }}>
               Discover local businesses, including grocery stores, bakeries, hotels, pharmacies, hardware shops, mobile shops, and other establishments.
             </p>
           </div>
           <div className="service">
-            <h3 style={{ fontSize: '16px', color: 'var(--primary)' }}>3. Native Workers</h3>
+            <h3 style={{ fontSize: '16px', color: 'var(--gold-dark)' }}>3. Native Workers</h3>
             <p className="muted" style={{ fontSize: '14px' }}>
               Find local professionals and skilled workers such as electricians, plumbers, carpenters, mechanics, painters, tutors, and other service providers.
             </p>
           </div>
           <div className="service">
-            <h3 style={{ fontSize: '16px', color: 'var(--primary)' }}>4. Transportation Services</h3>
+            <h3 style={{ fontSize: '16px', color: 'var(--gold-dark)' }}>4. Transportation Services</h3>
             <p className="muted" style={{ fontSize: '14px' }}>
               Find local auto-rickshaw drivers, taxi services, goods transport, and other transportation options.
             </p>
           </div>
           <div className="service">
-            <h3 style={{ fontSize: '16px', color: 'var(--primary)' }}>5. Panchayat</h3>
+            <h3 style={{ fontSize: '16px', color: 'var(--gold-dark)' }}>5. Panchayat</h3>
             <p className="muted" style={{ fontSize: '14px' }}>
               Access useful local-government information, official contacts, public services, announcements, and community updates.
             </p>

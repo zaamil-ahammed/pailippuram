@@ -73,9 +73,9 @@ export default function Announcements() {
               style={
                 pinned
                   ? {
-                      borderColor: '#f59e0b',
-                      background: 'linear-gradient(180deg, #fffdfa 0%, #ffffff 100%)',
-                      boxShadow: '0 4px 16px rgba(245, 158, 11, 0.12)',
+                      borderColor: 'var(--accent)',
+                      background: 'linear-gradient(180deg, #fdfbf7 0%, #ffffff 100%)',
+                      boxShadow: '0 4px 16px rgba(197, 160, 89, 0.12)',
                     }
                   : {}
               }
@@ -86,9 +86,9 @@ export default function Announcements() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    background: '#fef3c7',
-                    color: '#92400e',
-                    border: '1px solid #fde68a',
+                    background: 'var(--accent-tint)',
+                    color: 'var(--gold-dark)',
+                    border: '1px solid var(--accent-border)',
                     borderRadius: 999,
                     padding: '3px 10px',
                     fontSize: 11.5,
@@ -104,13 +104,13 @@ export default function Announcements() {
               )}
               <div className="cardhead">
                 <div>
-                  <h3 style={pinned ? { color: '#78350f', fontWeight: 800 } : {}}>{cleanTitle}</h3>
+                  <h3 style={pinned ? { color: 'var(--gold-dark)', fontWeight: 800 } : {}}>{cleanTitle}</h3>
                   {n.event_date ? <p className="muted small">{formatDate(n.event_date)}</p> : null}
                 </div>
                 <button
                   type="button"
                   className="iconbtn"
-                  style={{ width: 38, height: 38, borderRadius: 12, border: '1px solid var(--accent-border)', color: 'var(--primary)', flexShrink: 0 }}
+                  style={{ width: 38, height: 38, borderRadius: 12, border: '1px solid var(--accent-border)', color: 'var(--gold-dark)', flexShrink: 0 }}
                   title="Share announcement / അറിയിപ്പ് പങ്കിടുക"
                   aria-label="Share announcement"
                   onClick={() => handleShareAnnouncement(n)}

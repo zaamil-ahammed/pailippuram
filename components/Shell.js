@@ -226,9 +226,9 @@ export default function Shell({ children }) {
               onClick={handleShareApp}
               style={{
                 padding: '10px 14px',
-                background: '#eff6ff',
-                borderColor: '#bfdbfe',
-                color: 'var(--primary)',
+                background: 'var(--accent-tint)',
+                borderColor: 'var(--accent-border)',
+                color: 'var(--ink)',
                 fontWeight: 700,
                 cursor: 'pointer',
               }}
@@ -243,8 +243,8 @@ export default function Shell({ children }) {
                     height: 34,
                     borderRadius: 10,
                     background: '#ffffff',
-                    color: 'var(--primary)',
-                    border: '1px solid #bfdbfe',
+                    color: 'var(--gold-dark)',
+                    border: '1px solid var(--accent-border)',
                     flexShrink: 0,
                   }}
                 >
@@ -260,7 +260,7 @@ export default function Shell({ children }) {
                   Share App · ലിങ്ക് പങ്കിടുക
                 </span>
               </span>
-              <span aria-hidden="true" style={{ fontSize: 18 }}>&#8250;</span>
+              <span aria-hidden="true" style={{ fontSize: 18, color: 'var(--gold-dark)' }}>&#8250;</span>
             </button>
             {LINKS.map((l) => (
               <Link key={l.href} href={l.href} className="linkrow" onClick={() => setOpen(false)} style={{ padding: '8px 14px' }}>
@@ -273,9 +273,9 @@ export default function Shell({ children }) {
                       width: 34,
                       height: 34,
                       borderRadius: 10,
-                      background: '#eff6ff',
-                      color: 'var(--primary)',
-                      border: '1px solid #dbeafe',
+                      background: 'var(--accent-tint)',
+                      color: 'var(--gold-dark)',
+                      border: '1px solid var(--accent-border)',
                       flexShrink: 0,
                     }}
                   >

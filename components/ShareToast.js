@@ -33,17 +33,17 @@ export default function ShareToast() {
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 9999,
-        background: '#0f172a',
+        background: '#121212',
         color: '#ffffff',
         padding: '12px 20px',
         borderRadius: 16,
-        boxShadow: '0 12px 32px rgba(15, 23, 42, 0.35)',
+        boxShadow: '0 12px 32px rgba(0, 0, 0, 0.45)',
         display: 'flex',
         alignItems: 'center',
         gap: 12,
         maxWidth: '90vw',
         animation: 'slideDownToast 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-        border: '1px solid rgba(255, 255, 255, 0.15)',
+        border: '1.5px solid rgba(197, 160, 89, 0.4)',
         backdropFilter: 'blur(8px)',
       }}
     >
@@ -55,7 +55,7 @@ export default function ShareToast() {
           width: 32,
           height: 32,
           borderRadius: '50%',
-          background: '#22c55e',
+          background: 'linear-gradient(135deg, #c5a059 0%, #8c6d32 100%)',
           color: '#ffffff',
           flexShrink: 0,
         }}
@@ -66,7 +66,7 @@ export default function ShareToast() {
       </span>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.2 }}>{toast.message}</span>
-        {toast.sub && <span style={{ fontSize: 12, color: '#93c5fd', fontWeight: 500 }}>{toast.sub}</span>}
+        {toast.sub && <span style={{ fontSize: 12, color: '#e5c98f', fontWeight: 500 }}>{toast.sub}</span>}
       </div>
     </div>
   );

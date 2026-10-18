@@ -511,10 +511,10 @@ function ShareFormInner() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontSize: 26 }}>{activeMenu.icon}</span>
             <div>
-              <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--primary)' }}>
+              <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--ink)' }}>
                 {activeMenu.label} · {activeMenu.ml}
               </div>
-              <div style={{ fontSize: 12.5, color: '#1e3a8a', marginTop: 1 }}>{activeMenu.desc}</div>
+              <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 1 }}>{activeMenu.desc}</div>
             </div>
           </div>
           <span className="pill" style={{ flexShrink: 0 }}>
@@ -543,9 +543,9 @@ function ShareFormInner() {
                       style={{
                         minHeight: 46,
                         borderRadius: 12,
-                        border: sel ? '2px solid #e11d48' : '1.5px solid var(--card-border)',
-                        background: sel ? '#ffe4e6' : '#ffffff',
-                        color: sel ? '#be123c' : 'var(--ink)',
+                        border: sel ? '2px solid var(--accent)' : '1.5px solid var(--card-border)',
+                        background: sel ? 'var(--primary)' : '#ffffff',
+                        color: sel ? '#ffffff' : 'var(--ink)',
                         fontWeight: 800,
                         fontSize: 18,
                         cursor: 'pointer',

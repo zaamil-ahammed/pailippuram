@@ -11,9 +11,9 @@ const TILES = [
     href: '/contacts',
     label: 'Important contacts',
     ml: 'പ്രധാന നമ്പറുകൾ',
-    bg: '#eff6ff',
-    iconColor: '#1d4ed8',
-    border: '#dbeafe',
+    bg: '#faf6ee',
+    iconColor: '#8c6d32',
+    border: '#e8ddc8',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
@@ -24,9 +24,9 @@ const TILES = [
     href: '/shops',
     label: 'Local shops',
     ml: 'കടകൾ',
-    bg: '#f0fdf4',
-    iconColor: '#16a34a',
-    border: '#dcfce7',
+    bg: '#faf6ee',
+    iconColor: '#8c6d32',
+    border: '#e8ddc8',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
@@ -39,9 +39,9 @@ const TILES = [
     href: '/workers',
     label: 'Native workers',
     ml: 'തൊഴിലാളികൾ',
-    bg: '#fffbeb',
-    iconColor: '#d97706',
-    border: '#fef3c7',
+    bg: '#faf6ee',
+    iconColor: '#8c6d32',
+    border: '#e8ddc8',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
@@ -52,9 +52,9 @@ const TILES = [
     href: '/transport',
     label: 'Taxi, Auto, JCB',
     ml: 'വാഹനങ്ങൾ / ടാക്സി',
-    bg: '#f5f3ff',
-    iconColor: '#7c3aed',
-    border: '#ede9fe',
+    bg: '#faf6ee',
+    iconColor: '#8c6d32',
+    border: '#e8ddc8',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
@@ -68,9 +68,9 @@ const TILES = [
     href: '/bus',
     label: 'Bus timing',
     ml: 'ബസ് സമയം',
-    bg: '#f0f9ff',
-    iconColor: '#0284c7',
-    border: '#e0f2fe',
+    bg: '#faf6ee',
+    iconColor: '#8c6d32',
+    border: '#e8ddc8',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <rect width="16" height="13" x="4" y="3" rx="2" />
@@ -88,9 +88,9 @@ const TILES = [
     href: '/donors',
     label: 'Blood donors',
     ml: 'രക്തദാതാക്കൾ',
-    bg: '#fef2f2',
-    iconColor: '#e11d48',
-    border: '#fee2e2',
+    bg: '#faf6ee',
+    iconColor: '#8c6d32',
+    border: '#e8ddc8',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" />
@@ -101,9 +101,9 @@ const TILES = [
     href: '/panchayath',
     label: 'Gramapanchayath',
     ml: 'പഞ്ചായത്ത് വിവരങ്ങൾ',
-    bg: '#f8fafc',
-    iconColor: '#0f172a',
-    border: '#e2e8f0',
+    bg: '#faf6ee',
+    iconColor: '#8c6d32',
+    border: '#e8ddc8',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <line x1="3" y1="21" x2="21" y2="21" />
@@ -119,9 +119,9 @@ const TILES = [
     href: '/announcements',
     label: 'Announcements',
     ml: 'അറിയിപ്പുകൾ',
-    bg: '#eff6ff',
-    iconColor: '#2563eb',
-    border: '#dbeafe',
+    bg: '#faf6ee',
+    iconColor: '#8c6d32',
+    border: '#e8ddc8',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <path d="m3 11 18-5v12L3 14v-3z" />
@@ -181,7 +181,7 @@ export default function Home() {
                 borderRadius: 18,
                 background: '#ffffff',
                 border: '1.5px solid var(--card-border)',
-                boxShadow: '0 1px 3px rgba(15, 23, 42, 0.02)',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
@@ -204,8 +204,8 @@ export default function Home() {
                 {t.icon}
               </span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 8, width: '100%' }}>
-                <span style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', lineHeight: 1.25 }}>{t.ml}</span>
-                <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 500, lineHeight: 1.2 }}>{t.label}</span>
+                <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--ink)', lineHeight: 1.25 }}>{t.ml}</span>
+                <span style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 500, lineHeight: 1.2 }}>{t.label}</span>
               </div>
             </Link>
           ))}
@@ -221,7 +221,7 @@ export default function Home() {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
           <h2>Latest announcements</h2>
-          <Link href="/announcements" style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>
+          <Link href="/announcements" style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold-dark)' }}>
             View all · എല്ലാം കാണുക →
           </Link>
         </div>
@@ -238,25 +238,25 @@ export default function Home() {
               style={
                 pinned
                   ? {
-                      borderColor: '#f59e0b',
-                      background: 'linear-gradient(180deg, #fffdfa 0%, #ffffff 100%)',
-                      boxShadow: '0 4px 14px rgba(245, 158, 11, 0.1)',
+                      borderColor: 'var(--accent)',
+                      background: 'linear-gradient(180deg, #fdfbf7 0%, #ffffff 100%)',
+                      boxShadow: '0 4px 16px rgba(197, 160, 89, 0.12)',
                     }
                   : {}
               }
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                <h3 style={pinned ? { color: '#78350f', fontWeight: 800 } : {}}>{cleanTitle}</h3>
+                <h3 style={pinned ? { color: 'var(--gold-dark)', fontWeight: 800 } : {}}>{cleanTitle}</h3>
                 {pinned && (
                   <span
                     style={{
                       fontSize: 11,
                       fontWeight: 800,
-                      background: '#fef3c7',
-                      color: '#92400e',
+                      background: 'var(--accent-tint)',
+                      color: 'var(--gold-dark)',
                       padding: '2px 8px',
                       borderRadius: 999,
-                      border: '1px solid #fde68a',
+                      border: '1px solid var(--accent-border)',
                       flexShrink: 0,
                     }}
                   >

@@ -121,9 +121,9 @@ function getCategoryIcon(category = '', kind = 'worker') {
   // 3. PANCHAYATH LEADERSHIP
   if (kind === 'panchayath' || c.includes('president') || c.includes('secretary') || c.includes('bearer')) {
     return {
-      bg: '#eff6ff',
-      color: '#1e3a8a',
-      border: '#bfdbfe',
+      bg: '#faf6ee',
+      color: '#8c6d32',
+      border: '#e8ddc8',
       svg: (
         <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
           <line x1="3" y1="21" x2="21" y2="21" />
@@ -139,9 +139,9 @@ function getCategoryIcon(category = '', kind = 'worker') {
 
   if (c.includes('ward') || c.includes('member')) {
     return {
-      bg: '#f0fdf4',
-      color: '#15803d',
-      border: '#bbf7d0',
+      bg: '#faf6ee',
+      color: '#8c6d32',
+      border: '#e8ddc8',
       svg: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -156,9 +156,9 @@ function getCategoryIcon(category = '', kind = 'worker') {
   // 4. NATIVE WORKERS
   if (c.includes('electric') || c.includes('ഇലക്ട്രി')) {
     return {
-      bg: '#fffbeb',
-      color: '#b45309',
-      border: '#fde68a',
+      bg: '#faf6ee',
+      color: '#8c6d32',
+      border: '#e8ddc8',
       svg: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
@@ -169,9 +169,9 @@ function getCategoryIcon(category = '', kind = 'worker') {
 
   if (c.includes('plumb') || c.includes('പ്ലംബ')) {
     return {
-      bg: '#eff6ff',
-      color: '#1d4ed8',
-      border: '#bfdbfe',
+      bg: '#faf6ee',
+      color: '#8c6d32',
+      border: '#e8ddc8',
       svg: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
@@ -260,9 +260,9 @@ function getCategoryIcon(category = '', kind = 'worker') {
 
   // Default persona
   return {
-    bg: '#eff6ff',
-    color: '#1e40af',
-    border: '#bfdbfe',
+    bg: '#faf6ee',
+    color: '#8c6d32',
+    border: '#e8ddc8',
     svg: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />

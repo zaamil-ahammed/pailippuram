@@ -36,9 +36,9 @@ export default function Donors() {
               gap: 8,
               fontSize: 14,
               fontWeight: 700,
-              background: '#fef2f2',
-              borderColor: '#fee2e2',
-              color: '#e11d48',
+              background: 'var(--accent-tint)',
+              borderColor: 'var(--accent-border)',
+              color: 'var(--ink)',
             }}
           >
             <span style={{ fontSize: 18 }}>🩸</span>

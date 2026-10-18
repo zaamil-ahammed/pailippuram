@@ -52,7 +52,7 @@ export default function Bus() {
               <button
                 type="button"
                 className="iconbtn"
-                style={{ width: 38, height: 38, borderRadius: 12, border: '1px solid var(--accent-border)', color: 'var(--primary)', flexShrink: 0 }}
+                style={{ width: 38, height: 38, borderRadius: 12, border: '1px solid var(--accent-border)', color: 'var(--gold-dark)', flexShrink: 0 }}
                 title="Share bus timing / സമയം പങ്കിടുക"
                 aria-label="Share route timing"
                 onClick={() => handleShareBus(r)}

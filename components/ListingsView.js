@@ -193,7 +193,7 @@ export default function ListingsView({
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           el.style.borderColor = 'var(--accent)';
-          el.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.25), 0 8px 24px rgba(37, 99, 235, 0.15)';
+          el.style.boxShadow = '0 0 0 3px rgba(197, 160, 89, 0.35), 0 8px 24px rgba(0, 0, 0, 0.15)';
           setTimeout(() => {
             el.style.borderColor = '';
             el.style.boxShadow = '';

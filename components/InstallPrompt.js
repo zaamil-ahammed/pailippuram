@@ -37,7 +37,7 @@ export default function InstallPrompt() {
               padding: 22,
               background: '#ffffff',
               boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-              border: '2px solid var(--primary)',
+              border: '1.5px solid var(--accent)',
               animation: 'slideUpModal 0.25s ease-out',
             }}
             onClick={(e) => e.stopPropagation()}
@@ -57,8 +57,9 @@ export default function InstallPrompt() {
                     width: 32,
                     height: 32,
                     borderRadius: '50%',
-                    background: '#eff6ff',
-                    color: 'var(--primary)',
+                    background: 'var(--accent-tint)',
+                    color: 'var(--gold-dark)',
+                    border: '1px solid var(--accent-border)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -78,8 +79,9 @@ export default function InstallPrompt() {
                     width: 32,
                     height: 32,
                     borderRadius: '50%',
-                    background: '#eff6ff',
-                    color: 'var(--primary)',
+                    background: 'var(--accent-tint)',
+                    color: 'var(--gold-dark)',
+                    border: '1px solid var(--accent-border)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -120,7 +122,7 @@ export default function InstallPrompt() {
               padding: 22,
               background: '#ffffff',
               boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-              border: '2px solid var(--primary)',
+              border: '1.5px solid var(--accent)',
               animation: 'slideUpModal 0.25s ease-out',
             }}
             onClick={(e) => e.stopPropagation()}

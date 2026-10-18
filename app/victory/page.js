@@ -25,7 +25,7 @@ export default function VictoryClubLandingPage() {
     <div className="victory-page">
       <style>{`
         .victory-page {
-          background-color: #050814;
+          background-color: #09090b;
           color: #ffffff;
           min-height: 100vh;
           position: relative;
@@ -41,10 +41,10 @@ export default function VictoryClubLandingPage() {
           left: 15%;
           width: 340px;
           height: 340px;
-          background: #7c3aed;
+          background: #c5a059;
           border-radius: 50%;
-          filter: blur(120px);
-          opacity: 0.38;
+          filter: blur(140px);
+          opacity: 0.22;
           pointer-events: none;
           z-index: 0;
         }
@@ -55,10 +55,10 @@ export default function VictoryClubLandingPage() {
           right: 10%;
           width: 320px;
           height: 320px;
-          background: #2563eb;
+          background: #927238;
           border-radius: 50%;
-          filter: blur(120px);
-          opacity: 0.32;
+          filter: blur(130px);
+          opacity: 0.18;
           pointer-events: none;
           z-index: 0;
         }
@@ -69,10 +69,10 @@ export default function VictoryClubLandingPage() {
           left: 30%;
           width: 360px;
           height: 360px;
-          background: #db2777;
+          background: #e5c98f;
           border-radius: 50%;
-          filter: blur(140px);
-          opacity: 0.28;
+          filter: blur(150px);
+          opacity: 0.15;
           pointer-events: none;
           z-index: 0;
         }
@@ -97,9 +97,9 @@ export default function VictoryClubLandingPage() {
           font-size: 14px;
           font-weight: 600;
           color: #ffffff;
-          background: rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.08);
           backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.22);
+          border: 1px solid rgba(197, 160, 89, 0.35);
           border-radius: 999px;
           cursor: pointer;
           text-decoration: none;
@@ -107,8 +107,8 @@ export default function VictoryClubLandingPage() {
         }
 
         .victory-btn:hover {
-          background: rgba(255, 255, 255, 0.22);
-          border-color: #ffffff;
+          background: rgba(197, 160, 89, 0.2);
+          border-color: #e5c98f;
           transform: translateY(-1px);
         }
 
@@ -135,8 +135,8 @@ export default function VictoryClubLandingPage() {
           border-radius: 50%;
           background: #ffffff;
           padding: 12px;
-          border: 3px solid rgba(255, 255, 255, 0.25);
-          box-shadow: 0 16px 40px rgba(124, 58, 237, 0.35);
+          border: 2px solid rgba(197, 160, 89, 0.5);
+          box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 35px rgba(197, 160, 89, 0.2);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -162,27 +162,27 @@ export default function VictoryClubLandingPage() {
         .victory-subtitle {
           font-size: 22px;
           font-weight: 600;
-          color: #cbd5e1;
+          color: #e5c98f;
           margin: 0 0 16px;
         }
 
         .victory-estd-badge {
           display: inline-block;
-          padding: 4px 14px;
-          border: 1px solid rgba(255, 255, 255, 0.3);
+          padding: 5px 16px;
+          border: 1px solid rgba(197, 160, 89, 0.45);
           border-radius: 999px;
           font-size: 12px;
           font-weight: 700;
           letter-spacing: 0.12em;
-          color: #e2e8f0;
-          background: rgba(255, 255, 255, 0.08);
+          color: #e5c98f;
+          background: rgba(197, 160, 89, 0.1);
           backdrop-filter: blur(8px);
           margin-bottom: 20px;
         }
 
         .victory-card {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(197, 160, 89, 0.2);
           border-radius: 20px;
           padding: 22px 20px;
           margin-bottom: 24px;
@@ -228,32 +228,35 @@ export default function VictoryClubLandingPage() {
           gap: 10px;
           padding: 13px 26px;
           border-radius: 999px;
-          background: linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #f97316 100%);
+          background: #121212;
+          border: 1.5px solid #c5a059;
           color: #ffffff !important;
           font-weight: 700;
           font-size: 15px;
           text-decoration: none !important;
-          box-shadow: 0 8px 24px rgba(236, 72, 153, 0.35);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 20px rgba(197, 160, 89, 0.2);
           transition: transform 0.18s ease, box-shadow 0.18s ease;
         }
 
         .victory-insta-link:hover {
           transform: translateY(-2px) scale(1.03);
-          box-shadow: 0 12px 30px rgba(236, 72, 153, 0.45);
+          box-shadow: 0 12px 30px rgba(197, 160, 89, 0.35);
+          background: #1e1e20;
+          border-color: #e5c98f;
         }
 
         .victory-page-footer {
           padding: 24px 20px;
           border-top: 1px solid rgba(255, 255, 255, 0.1);
           text-align: center;
-          color: #64748b;
+          color: #8b8882;
           font-size: 13px;
           position: relative;
           z-index: 10;
         }
 
         .victory-page-footer a {
-          color: #93c5fd;
+          color: #e5c98f;
           text-decoration: underline;
         }
       `}</style>
