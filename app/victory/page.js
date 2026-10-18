@@ -150,7 +150,7 @@ export default function VictoryClubLandingPage() {
         }
 
         .victory-title {
-          font-family: 'Baloo Chettan 2', 'Anek Malayalam', sans-serif;
+          font-family: 'Gayathri', 'Anek Malayalam', sans-serif;
           font-size: 36px;
           font-weight: 800;
           line-height: 1.15;

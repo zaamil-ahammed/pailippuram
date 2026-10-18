@@ -32,7 +32,7 @@ export default function RootLayout({ children }) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@400;600;800&family=Baloo+Chettan+2:wght@600;800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@400;600;800&family=Gayathri:wght@600;800&display=swap"
           rel="stylesheet"
         />
       </head>
