@@ -39,7 +39,7 @@ export default function ListingCard({ row }) {
         <button
           type="button"
           className="iconbtn"
-          style={{ width: 38, height: 38, borderRadius: 12, border: '1px solid var(--accent-border)', color: copied ? '#16a34a' : 'var(--gold-dark)', flexShrink: 0 }}
+          style={{ width: 38, height: 38, borderRadius: 12, border: '1px solid var(--accent-border)', color: copied ? 'var(--accent)' : 'var(--gold-dark)', flexShrink: 0 }}
           title="Share direct link / ലിങ്ക് പങ്കിടുക"
           aria-label="Share direct link"
           onClick={handleShare}

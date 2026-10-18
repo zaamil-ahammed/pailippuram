@@ -4,12 +4,19 @@
 -- Only people listed in the `admins` table can add, edit, hide or delete.
 
 -- ---------- Schema Migrations (Safe to run on existing databases) ----------
--- If your database was created earlier, run these lines to ensure photo_url columns exist:
+-- If your database was created earlier, run these lines to ensure columns and check constraints exist:
 alter table if exists listings add column if not exists photo_url text;
 alter table if exists panchayath_items add column if not exists photo_url text;
 alter table if exists donors add column if not exists photo_url text;
 alter table if exists submissions add column if not exists photo_url text;
 alter table if exists bus_routes add column if not exists direction text;
+
+-- Update check constraints on listings and categories to ensure 'worker' and 'transport' are accepted
+alter table if exists listings drop constraint if exists listings_kind_check;
+alter table if exists listings add constraint listings_kind_check check (kind in ('contact', 'business', 'shop', 'worker', 'transport'));
+alter table if exists categories drop constraint if exists categories_kind_check;
+alter table if exists categories add constraint categories_kind_check check (kind in ('contact', 'business', 'shop', 'worker', 'transport'));
+
 notify pgrst, 'reload schema';
 
 -- ---------- Tables ----------

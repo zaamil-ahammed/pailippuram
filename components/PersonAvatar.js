@@ -9,9 +9,9 @@ function getCategoryIcon(category = '', kind = 'worker') {
   // 0. LOCAL SHOPS / BUSINESS
   if (kind === 'shop' || kind === 'business' || c.includes('shop') || c.includes('store') || c.includes('supermarket') || c.includes('bakery') || c.includes('pharmacy') || c.includes('കടകൾ') || c.includes('കട')) {
     return {
-      bg: '#f0fdf4',
-      color: '#16a34a',
-      border: '#bbf7d0',
+      bg: '#faf6ee',
+      color: '#8c6d32',
+      border: '#e8ddc8',
       svg: (
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
           <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />

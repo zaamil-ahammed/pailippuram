@@ -47,8 +47,8 @@ export function SharePageButton({ title, text }) {
       title="Share link / ലിങ്ക് കോപ്പി ചെയ്യുക"
       aria-label="Share link"
       style={{
-        border: '1.5px solid rgba(255, 255, 255, 0.3)',
-        background: copied ? 'rgba(34, 197, 94, 0.35)' : 'rgba(255, 255, 255, 0.12)',
+        border: copied ? '1.5px solid #e5c98f' : '1.5px solid rgba(255, 255, 255, 0.3)',
+        background: copied ? 'rgba(197, 160, 89, 0.45)' : 'rgba(255, 255, 255, 0.12)',
         color: '#ffffff',
       }}
     >

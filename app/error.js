@@ -34,7 +34,7 @@ export default function Error({ error, reset }) {
             Sorry for the inconvenience. You can try again or return to the main directory.
           </p>
           {error?.message ? (
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 12px', fontSize: 12, fontFamily: 'monospace', color: '#475569', marginBottom: 16, wordBreak: 'break-word' }}>
+            <div style={{ background: 'var(--accent-tint)', border: '1px solid var(--accent-border)', borderRadius: 10, padding: '10px 14px', fontSize: 12.5, fontFamily: 'monospace', color: 'var(--ink)', marginBottom: 16, wordBreak: 'break-word' }}>
               {error.message}
             </div>
           ) : null}

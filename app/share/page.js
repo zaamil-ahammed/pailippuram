@@ -232,11 +232,6 @@ function ShareFormInner() {
   const [age, setAge] = useState('');
   const [emergencyReady, setEmergencyReady] = useState(true);
 
-  // Bus specific
-  const [busName, setBusName] = useState('');
-  const [departureTimes, setDepartureTimes] = useState('');
-  const [direction, setDirection] = useState('');
-
   // Announcement specific
   const [eventDate, setEventDate] = useState('');
   const [organizedBy, setOrganizedBy] = useState('');
@@ -400,9 +395,9 @@ function ShareFormInner() {
               width: 64,
               height: 64,
               borderRadius: '50%',
-              background: '#ecfdf5',
-              color: '#059669',
-              border: '2px solid #a7f3d0',
+              background: 'var(--accent-tint)',
+              color: 'var(--gold-dark)',
+              border: '2px solid var(--accent-border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -436,7 +431,6 @@ function ShareFormInner() {
                 setDetails('');
                 setVehicleModel('');
                 setWorkingHours('');
-                setDepartureTimes('');
               }}
             >
               + Share another listing · മറ്റൊന്ന് ചേർക്കുക

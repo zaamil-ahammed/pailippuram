@@ -42,19 +42,19 @@ async function sendAlertEmail(submission) {
       <head>
         <meta charset="utf-8">
         <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #0f172a; margin: 0; padding: 24px; }
-          .container { max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06); }
-          .header { background: linear-gradient(135deg, #172554 0%, #1e40af 100%); color: #ffffff; padding: 24px 28px; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f9f8f6; color: #121212; margin: 0; padding: 24px; }
+          .container { max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e8e5de; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); }
+          .header { background: linear-gradient(135deg, #09090b 0%, #1c1c1f 100%); color: #ffffff; padding: 24px 28px; border-bottom: 1.5px solid rgba(197, 160, 89, 0.4); }
           .header h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
-          .header p { margin: 4px 0 0; font-size: 13px; color: #bfdbfe; }
+          .header p { margin: 4px 0 0; font-size: 13px; color: #e5c98f; }
           .content { padding: 28px; }
-          .badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: ${isUrgent ? '#fee2e2' : '#eff6ff'}; color: ${isUrgent ? '#991b1b' : '#1e40af'}; border: 1px solid ${isUrgent ? '#fca5a5' : '#bfdbfe'}; margin-bottom: 16px; }
-          .title { font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 16px; }
+          .badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: ${isUrgent ? '#fee2e2' : '#faf6ee'}; color: ${isUrgent ? '#991b1b' : '#8c6d32'}; border: 1px solid ${isUrgent ? '#fca5a5' : '#e8ddc8'}; margin-bottom: 16px; }
+          .title { font-size: 22px; font-weight: 800; color: #121212; margin: 0 0 16px; }
           .field { margin-bottom: 14px; }
-          .field-label { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.04em; margin-bottom: 4px; }
-          .field-value { font-size: 15px; color: #0f172a; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; white-space: pre-wrap; line-height: 1.5; }
-          .btn { display: inline-block; background: #1e40af; color: #ffffff !important; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 14px; margin-top: 20px; text-align: center; }
-          .footer { padding: 16px 28px; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b; text-align: center; }
+          .field-label { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #6b6862; letter-spacing: 0.04em; margin-bottom: 4px; }
+          .field-value { font-size: 15px; color: #121212; background: #faf6ee; border: 1px solid #e8ddc8; border-radius: 10px; padding: 10px 14px; white-space: pre-wrap; line-height: 1.5; }
+          .btn { display: inline-block; background: #121212; color: #ffffff !important; border: 1px solid #c5a059; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 14px; margin-top: 20px; text-align: center; }
+          .footer { padding: 16px 28px; background: #faf6ee; border-top: 1px solid #e8ddc8; font-size: 12px; color: #6b6862; text-align: center; }
         </style>
       </head>
       <body>

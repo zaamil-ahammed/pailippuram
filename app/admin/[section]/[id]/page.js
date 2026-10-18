@@ -193,45 +193,114 @@ export default function AdminEdit() {
 
     async function executeSave(data) {
       if (isNew) {
-        let res = await supabase.from(cfg.table).insert({ ...data, ...cfg.match }).select('id').single();
+        let insertPayload = { ...data, ...cfg.match };
+        let res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
+
+        // 1. updated_by column missing or RLS issue
         if (res.error && res.error.message && res.error.message.includes('updated_by')) {
-          const { updated_by, ...cleaned } = data;
-          res = await supabase.from(cfg.table).insert({ ...cleaned, ...cfg.match }).select('id').single();
+          const { updated_by, ...cleaned } = insertPayload;
+          insertPayload = cleaned;
+          res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
         }
+
+        // 2. phone_check length constraint
         if (res.error && res.error.message && res.error.message.includes('phone_check')) {
-          const { updated_by, ...cleaned } = data;
-          const safePhone = (data.phone || '').slice(0, 15) || null;
-          res = await supabase.from(cfg.table).insert({ ...cleaned, ...cfg.match, phone: safePhone }).select('id').single();
+          const safePhone = (insertPayload.phone || '').slice(0, 15) || null;
+          insertPayload = { ...insertPayload, phone: safePhone };
+          res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
         }
+
+        // 3. status_check constraint
         if (res.error && res.error.message && res.error.message.includes('status_check')) {
-          const altStatus = data.status === 'hidden' ? 'archived' : 'hidden';
-          const { updated_by, ...cleaned } = data;
-          res = await supabase.from(cfg.table).insert({ ...cleaned, ...cfg.match, status: altStatus }).select('id').single();
+          const altStatus = insertPayload.status === 'hidden' ? 'archived' : 'hidden';
+          insertPayload = { ...insertPayload, status: altStatus };
+          res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
         }
-        if (res.error && cfg.match?.kind === 'transport') {
-          const { updated_by, ...cleaned } = data;
-          const fallbackRes = await supabase.from(cfg.table).insert({ ...cleaned, kind: 'worker' }).select('id').single();
-          if (!fallbackRes.error) {
-            return { error: null, rowId: fallbackRes.data?.id };
+
+        // 4. listings_kind_check constraint (remote database only allows specific kinds)
+        if (cfg.table === 'listings' && res.error && res.error.message && (res.error.message.includes('listings_kind_check') || res.error.message.includes('kind_check'))) {
+          const intendedKind = cfg.match?.kind;
+          let safeDesc = insertPayload.description || '';
+          if (intendedKind === 'worker' && !safeDesc.includes('[WORKER]')) {
+            safeDesc = safeDesc ? `[WORKER]\n${safeDesc}` : '[WORKER]';
+          } else if (intendedKind === 'transport' && !safeDesc.includes('[TRANSPORT]')) {
+            safeDesc = safeDesc ? `[TRANSPORT]\n${safeDesc}` : '[TRANSPORT]';
+          }
+          const baseData = { ...insertPayload, description: safeDesc.slice(0, 1500) || null };
+
+          const candidateKinds = ['business', 'shop', 'contact'].filter((k) => k !== intendedKind);
+          for (const candKind of candidateKinds) {
+            let tryPayload = { ...baseData, kind: candKind };
+            let candRes = await supabase.from(cfg.table).insert(tryPayload).select('id').single();
+            if (candRes.error && candRes.error.message.includes('updated_by')) {
+              const { updated_by, ...noUser } = tryPayload;
+              tryPayload = noUser;
+              candRes = await supabase.from(cfg.table).insert(tryPayload).select('id').single();
+            }
+            if (candRes.error && (candRes.error.message.includes('category') || candRes.error.message.includes('foreign key'))) {
+              tryPayload = { ...tryPayload, category_id: null };
+              candRes = await supabase.from(cfg.table).insert(tryPayload).select('id').single();
+            }
+            if (!candRes.error) {
+              res = candRes;
+              break;
+            }
           }
         }
+
+        // 5. category foreign key error
+        if (res.error && res.error.message && (res.error.message.includes('category') || res.error.message.includes('foreign key'))) {
+          const { category_id, ...noCat } = insertPayload;
+          res = await supabase.from(cfg.table).insert(noCat).select('id').single();
+        }
+
         return { error: res.error, rowId: res.data?.id };
       } else {
-        let res = await supabase.from(cfg.table).update(data).eq('id', id);
+        let updatePayload = { ...data };
+        let res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
+
         if (res.error && res.error.message && res.error.message.includes('updated_by')) {
-          const { updated_by, ...cleaned } = data;
-          res = await supabase.from(cfg.table).update(cleaned).eq('id', id);
+          const { updated_by, ...cleaned } = updatePayload;
+          updatePayload = cleaned;
+          res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
         }
         if (res.error && res.error.message && res.error.message.includes('phone_check')) {
-          const { updated_by, ...cleaned } = data;
-          const safePhone = (data.phone || '').slice(0, 15) || null;
-          res = await supabase.from(cfg.table).update({ ...cleaned, phone: safePhone }).eq('id', id);
+          const safePhone = (updatePayload.phone || '').slice(0, 15) || null;
+          updatePayload = { ...updatePayload, phone: safePhone };
+          res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
         }
         if (res.error && res.error.message && res.error.message.includes('status_check')) {
-          const altStatus = data.status === 'hidden' ? 'archived' : 'hidden';
-          const { updated_by, ...cleaned } = data;
-          res = await supabase.from(cfg.table).update({ ...cleaned, status: altStatus }).eq('id', id);
+          const altStatus = updatePayload.status === 'hidden' ? 'archived' : 'hidden';
+          updatePayload = { ...updatePayload, status: altStatus };
+          res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
         }
+
+        if (cfg.table === 'listings' && res.error && res.error.message && (res.error.message.includes('listings_kind_check') || res.error.message.includes('kind_check'))) {
+          const intendedKind = cfg.match?.kind;
+          let safeDesc = updatePayload.description || '';
+          if (intendedKind === 'worker' && !safeDesc.includes('[WORKER]')) {
+            safeDesc = safeDesc ? `[WORKER]\n${safeDesc}` : '[WORKER]';
+          } else if (intendedKind === 'transport' && !safeDesc.includes('[TRANSPORT]')) {
+            safeDesc = safeDesc ? `[TRANSPORT]\n${safeDesc}` : '[TRANSPORT]';
+          }
+          const baseUpdate = { ...updatePayload, description: safeDesc.slice(0, 1500) || null };
+
+          const candidateKinds = ['business', 'shop', 'contact'].filter((k) => k !== intendedKind);
+          for (const candKind of candidateKinds) {
+            let tryPayload = { ...baseUpdate, kind: candKind };
+            let candRes = await supabase.from(cfg.table).update(tryPayload).eq('id', id);
+            if (candRes.error && candRes.error.message.includes('updated_by')) {
+              const { updated_by, ...noUser } = tryPayload;
+              tryPayload = noUser;
+              candRes = await supabase.from(cfg.table).update(tryPayload).eq('id', id);
+            }
+            if (!candRes.error) {
+              res = candRes;
+              break;
+            }
+          }
+        }
+
         return { error: res.error, rowId: id };
       }
     }

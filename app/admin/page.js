@@ -147,10 +147,22 @@ export default function AdminHome() {
         <h2>Manage content</h2>
         <p className="muted">Open any section to edit, hide, delete or add items.</p>
         <div className="grid2">
-          {SECTION_KEYS.map((key, i) => (
-            <Link key={key} href={`/admin/${key}`} className={`tile ${['sage', 'beige', ''][i % 3]}`}>
-              <span className="tilehead"><span className="count">{counts[key] ?? '-'}</span><u>Edit</u></span>
-              <span>{SECTIONS[key].label}</span>
+          {SECTION_KEYS.map((key) => (
+            <Link
+              key={key}
+              href={`/admin/${key}`}
+              className="tile"
+              style={{
+                background: '#ffffff',
+                border: '1.5px solid var(--card-border)',
+                borderRadius: 18,
+              }}
+            >
+              <span className="tilehead">
+                <span className="count" style={{ color: 'var(--gold-dark)' }}>{counts[key] ?? '-'}</span>
+                <u style={{ color: 'var(--gold-dark)', fontWeight: 600 }}>Manage</u>
+              </span>
+              <span style={{ fontWeight: 700, color: 'var(--ink)' }}>{SECTIONS[key].label}</span>
             </Link>
           ))}
         </div>

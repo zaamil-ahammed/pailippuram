@@ -29,7 +29,15 @@ export default function AdminList() {
     (s) => {
       if (!cfg) return Promise.resolve({ data: [], error: null });
       let q = s.from(cfg.table).select(cfg.select).order('created_at', { ascending: false });
-      for (const [k, v] of Object.entries(cfg.match)) q = q.eq(k, v);
+      if (section === 'workers') {
+        q = q.or('kind.eq.worker,description.ilike.%[WORKER]%');
+      } else if (section === 'transport') {
+        q = q.or('kind.eq.transport,description.ilike.%[TRANSPORT]%');
+      } else if (section === 'shops') {
+        q = q.or('kind.eq.business,kind.eq.shop');
+      } else {
+        for (const [k, v] of Object.entries(cfg.match)) q = q.eq(k, v);
+      }
       if (filter === 'Live') q = q.eq('status', 'approved');
       if (filter === 'Hidden') q = q.or('status.eq.hidden,status.eq.archived');
       if (filter === 'Outdated') {
@@ -91,7 +99,7 @@ export default function AdminList() {
     reload();
   }
 
-  const displayRows = section === 'announcements'
+  const sortedRows = section === 'announcements'
     ? [...rows].sort((a, b) => {
         const aPin = isPinnedAnnouncement(a) ? 1 : 0;
         const bPin = isPinnedAnnouncement(b) ? 1 : 0;
@@ -99,6 +107,13 @@ export default function AdminList() {
         return 0;
       })
     : rows;
+
+  const displayRows = section === 'shops'
+    ? sortedRows.filter((r) => {
+        const d = (r.description || '').toLowerCase();
+        return !d.includes('[worker]') && !d.includes('[transport]');
+      })
+    : sortedRows;
 
   return (
     <div className="page">
@@ -109,7 +124,9 @@ export default function AdminList() {
         </form>
       </PageHeader>
       <main className="body">
-        <Link className="btn dark big" href={`/admin/${section}/new`}>+ Add new {cfg.singular}</Link>
+        {section !== 'bus' && (
+          <Link className="btn dark big" href={`/admin/${section}/new`}>+ Add new {cfg.singular}</Link>
+        )}
         <div className="chips">
           {FILTERS.map((f) => (
             <button key={f} type="button" className={`chip ${filter === f ? 'on' : ''}`} onClick={() => setFilter(f)}>{f}</button>
@@ -125,7 +142,15 @@ export default function AdminList() {
             <article
               key={r.id}
               className="card"
-              style={isPinned ? { borderColor: '#f59e0b', background: '#fffdfa' } : {}}
+              style={
+                isPinned
+                  ? {
+                      borderColor: 'var(--accent)',
+                      background: 'linear-gradient(180deg, #fdfbf7 0%, #ffffff 100%)',
+                      boxShadow: '0 4px 16px rgba(197, 160, 89, 0.12)',
+                    }
+                  : {}
+              }
             >
               <div className="cardhead">
                 <div>
@@ -135,9 +160,9 @@ export default function AdminList() {
                       <span
                         className="pill"
                         style={{
-                          background: '#fef3c7',
-                          color: '#92400e',
-                          border: '1px solid #fde68a',
+                          background: 'var(--accent-tint)',
+                          color: 'var(--gold-dark)',
+                          border: '1px solid var(--accent-border)',
                           fontWeight: 700,
                           fontSize: 11,
                           padding: '2px 8px',
@@ -161,7 +186,7 @@ export default function AdminList() {
                   <button
                     type="button"
                     className="btn"
-                    style={isPinned ? { color: '#b45309', borderColor: '#fde68a', backgroundColor: '#fffbeb' } : {}}
+                    style={isPinned ? { color: 'var(--gold-dark)', borderColor: 'var(--accent-border)', backgroundColor: 'var(--accent-tint)' } : {}}
                     onClick={() => togglePin(r)}
                   >
                     {isPinned ? '📌 Unpin' : '📌 Pin to top'}

@@ -14,6 +14,11 @@
   --muted: #6b6862;            /* Refined Warm Graphite Secondary Text */
   --white: #ffffff;
 
+  /* Card and theme aliases */
+  --card-bg: var(--card);
+  --border: var(--card-border);
+  --text-muted: var(--muted);
+
   /* Legacy aliases mapped directly to new palette */
   --sage: var(--primary);
   --beige: var(--accent-tint);
@@ -71,7 +76,9 @@ p { margin: 0; }
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 .band input[type='search']::placeholder {
-  color: #8b8882;
+  color: #8b8882 !important;
+  opacity: 0.45 !important;
+  font-style: italic;
 }
 .band input[type='search']:focus {
   border-color: var(--accent);
@@ -168,7 +175,7 @@ p { margin: 0; }
   border-radius: 999px;
   white-space: nowrap;
 }
-.pill.beige { background: #f4f3ef; border-color: #e5e3dc; color: #27272a; }
+.pill.beige { background: var(--accent-tint); border-color: var(--accent-border); color: var(--gold-dark); }
 .pill.line { background: transparent; border: 1.5px solid var(--accent); color: var(--gold-dark); padding: 2px 10px; }
 .note {
   background: var(--accent-tint);
@@ -194,12 +201,34 @@ input:focus, select:focus, textarea:focus {
   outline: none;
 }
 textarea { padding: 12px 14px; min-height: 100px; resize: vertical; }
-input::placeholder, textarea::placeholder {
-  color: #9c9992;
-  opacity: 0.6;
-  font-size: 14.5px;
-  font-weight: 400;
+
+/* Form placeholder / sample text made subtly visible & non-intrusive */
+input::placeholder,
+textarea::placeholder,
+select::placeholder {
+  color: #a8a29e !important;
+  opacity: 0.35 !important;
+  font-size: 13.5px !important;
+  font-weight: 400 !important;
+  font-style: italic !important;
 }
+
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder {
+  color: #a8a29e !important;
+  opacity: 0.35 !important;
+  font-size: 13.5px !important;
+  font-style: italic !important;
+}
+
+input::-moz-placeholder,
+textarea::-moz-placeholder {
+  color: #a8a29e !important;
+  opacity: 0.35 !important;
+  font-size: 13.5px !important;
+  font-style: italic !important;
+}
+
 .check { display: flex; align-items: flex-start; gap: 12px; min-height: 44px; }
 .check input { width: 22px; height: 22px; flex-shrink: 0; margin-top: 2px; accent-color: var(--primary); }
 .hp { position: absolute; left: -9999px; height: 0; overflow: hidden; }
