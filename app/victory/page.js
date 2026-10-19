@@ -804,44 +804,44 @@ export default function VictoryClubLandingPage() {
             </div>
           </div>
 
-          // {/* Segmented Filter Tabs */}
-          // <div className="committee-tabs">
-          //   <button
-          //     type="button"
-          //     className={`committee-tab-btn ${activeTab === 'all' ? 'active' : ''}`}
-          //     onClick={() => setActiveTab('all')}
-          //   >
-          //     All Wings ({committeeData.totalCount})
-          //   </button>
-          //   <button
-          //     type="button"
-          //     className={`committee-tab-btn ${activeTab === 'executive' ? 'active' : ''}`}
-          //     onClick={() => setActiveTab('executive')}
-          //   >
-          //     Executive ({committeeData.executive.length})
-          //   </button>
-          //   <button
-          //     type="button"
-          //     className={`committee-tab-btn ${activeTab === 'portfolios' ? 'active' : ''}`}
-          //     onClick={() => setActiveTab('portfolios')}
-          //   >
-          //     Portfolios ({committeeData.portfolios.reduce((acc, p) => acc + p.members.length, 0)})
-          //   </button>
-          //   <button
-          //     type="button"
-          //     className={`committee-tab-btn ${activeTab === 'gcc' ? 'active' : ''}`}
-          //     onClick={() => setActiveTab('gcc')}
-          //   >
-          //     GCC Wing ({committeeData.gcc.length})
-          //   </button>
-          //   <button
-          //     type="button"
-          //     className={`committee-tab-btn ${activeTab === 'central' ? 'active' : ''}`}
-          //     onClick={() => setActiveTab('central')}
-          //   >
-          //     Central ({committeeData.central.length})
-          //   </button>
-          // </div>
+          {/* Segmented Filter Tabs */}
+          <div className="committee-tabs">
+            <button
+              type="button"
+              className={`committee-tab-btn ${activeTab === 'all' ? 'active' : ''}`}
+              onClick={() => setActiveTab('all')}
+            >
+              All Wings ({committeeData.totalCount})
+            </button>
+            <button
+              type="button"
+              className={`committee-tab-btn ${activeTab === 'executive' ? 'active' : ''}`}
+              onClick={() => setActiveTab('executive')}
+            >
+              Executive ({committeeData.executive.length})
+            </button>
+            <button
+              type="button"
+              className={`committee-tab-btn ${activeTab === 'portfolios' ? 'active' : ''}`}
+              onClick={() => setActiveTab('portfolios')}
+            >
+              Portfolios ({committeeData.portfolios.reduce((acc, p) => acc + p.members.length, 0)})
+            </button>
+            <button
+              type="button"
+              className={`committee-tab-btn ${activeTab === 'gcc' ? 'active' : ''}`}
+              onClick={() => setActiveTab('gcc')}
+            >
+              GCC Wing ({committeeData.gcc.length})
+            </button>
+            <button
+              type="button"
+              className={`committee-tab-btn ${activeTab === 'central' ? 'active' : ''}`}
+              onClick={() => setActiveTab('central')}
+            >
+              Central ({committeeData.central.length})
+            </button>
+          </div>
 
           {/* 1. EXECUTIVE LEADERS (With Photos) */}
           {(activeTab === 'all' || activeTab === 'executive') && committeeData.executive.length > 0 && (
