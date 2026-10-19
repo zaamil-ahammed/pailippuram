@@ -14,18 +14,6 @@ export default function VictoryClubLandingPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Hide site-wide footer while this page is mounted
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.body.classList.add('hide-global-footer');
-    }
-    return () => {
-      if (typeof document !== 'undefined') {
-        document.body.classList.remove('hide-global-footer');
-      }
-    };
-  }, []);
-
   // Scroll to top immediately when landing on /victory
   useEffect(() => {
     if (typeof window !== 'undefined') {
