@@ -19,6 +19,9 @@
   --border: var(--card-border);
   --text-muted: var(--muted);
 
+  /* hide the site-level footer only for pages that add the class */
+  body.hide-global-footer footer { display: none !important; }
+
   /* Legacy aliases mapped directly to new palette */
   --sage: var(--primary);
   --beige: var(--accent-tint);
