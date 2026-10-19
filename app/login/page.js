@@ -15,32 +15,21 @@ export default function Login() {
     if (e && e.preventDefault) e.preventDefault();
     setBusy(true);
     setMsg('');
+    
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      setBusy(false);
+      
       if (error) {
-        setMsg('Could not sign in with provided credentials.');
+        setMsg(error.message || 'Could not sign in with provided credentials.');
+        setBusy(false);
       } else {
+        // Only redirect if authentication is genuinely successful
         router.push('/admin');
       }
     } catch (err) {
-      console.warn('[Login] Sign-in error:', err);
+      console.error('[Login] Sign-in error:', err);
+      setMsg('An unexpected network error occurred.');
       setBusy(false);
-      // Auto-fallback
-      router.push('/admin');
-    }
-  }
-
-  async function handleQuickAdmin() {
-    setBusy(true);
-    setMsg('');
-    try {
-      await supabase.auth.signInWithPassword({ email: 'admin@pailippuram.local', password: 'admin' });
-      setBusy(false);
-      router.push('/admin');
-    } catch {
-      setBusy(false);
-      router.push('/admin');
     }
   }
 
@@ -72,23 +61,15 @@ export default function Login() {
             required
           />
         </div>
+        
         {msg ? <p className="error" role="alert">{msg}</p> : null}
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
           <button type="submit" className="btn dark big" disabled={busy}>
             {busy ? 'Signing in...' : 'Sign in'}
           </button>
-          
-          <button
-            type="button"
-            className="btn big"
-            style={{ border: '1px solid #cbd5e1', background: '#f8fafc' }}
-            disabled={busy}
-            onClick={handleQuickAdmin}
-          >
-            Instant Admin Sign In
-          </button>
         </div>
+        
         <p className="muted small" style={{ marginTop: '1rem' }}>
           Authorized administrators can manage listings, announcements, buses, donors, panchayath details, and Victory club members.
         </p>
