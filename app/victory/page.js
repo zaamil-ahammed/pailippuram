@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { useRows } from '../../lib/useRows';
 import { STARTER_VICTORY_MEMBERS } from '../../lib/mockStore';
+useEffect(() => { // hide the site-wide footer while this page is mounted document.body.classList.add('hide-global-footer'); return () => { document.body.classList.remove('hide-global-footer'); }; }, []);
 
 const DEFAULT_PROFILE_LINK = 'https://www.instagram.com/victory_pailippuram';
 
