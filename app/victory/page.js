@@ -243,8 +243,8 @@ export default function VictoryClubLandingPage() {
         }
 
         .victory-logo-img {
-          width: 100%;
-          height: 100%;
+          width: 150%;
+          height: 150%;
           object-fit: contain;
           border-radius: 50%;
         }
