@@ -41,6 +41,18 @@ export default function VictoryClubLandingPage() {
     }
   };
 
+   // Hide site-wide footer while this page is mounted
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.body.classList.add('hide-global-footer');
+    }
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.body.classList.remove('hide-global-footer');
+      }
+    };
+  }, []);
+
   // Fetch committee members live from database
   const { rows, loading } = useRows(
     (s) => s.from('victory_members').select('*').eq('status', 'approved').order('display_order', { ascending: true }),
