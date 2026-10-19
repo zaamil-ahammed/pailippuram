@@ -229,12 +229,12 @@ export default function VictoryClubLandingPage() {
         }
 
         .victory-logo-wrap {
-          width: 130px;
-          height: 130px;
+          width: 180px; /* Increase this value (e.g., from 130px to 180px) */
+          height: 180px; /* Keep this exactly the same as width for a perfect circle */
           margin: 0 auto 18px;
           border-radius: 50%;
           background: #0f0f13;
-          padding: 8px;
+          padding: 8px; /* Optional: Decrease this (e.g., to 4px) to make the image fill more of the container */
           border: 2px solid rgba(197, 160, 89, 0.45);
           box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 45px rgba(197, 160, 89, 0.22);
           display: flex;
