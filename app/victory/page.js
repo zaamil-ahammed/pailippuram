@@ -1030,7 +1030,7 @@ export default function VictoryClubLandingPage() {
             Over 30 Years of Community Excellence
           </p>
           <p className="legacy-text">
-            Situated in the heart of <strong style={{ color: '#ffffff' }}>Pailippuram, Palakkad district, Kerala</strong>.
+            Situated in the heart of <strong style={{ color: '#ffffff' }}> Karuvanparmbu, Pailippuram, Palakkad district, Kerala</strong>.
             Founded in 1994, Victory Arts &amp; Sports Club has fostered athletic talent, organized premier regional tournaments, and led charitable community support for three decades.
           </p>
         </div>
