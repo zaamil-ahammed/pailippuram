@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import PageHeader from '../../../../components/PageHeader';
 import MultiPhoneInput from '../../../../components/MultiPhoneInput';
+import ImageUploadField from '../../../../components/ImageUploadField';
 import { useAdmin } from '../../../../components/AdminGate';
 import { supabase, extractAllPhones, isPinnedAnnouncement, cleanAnnouncementBody, cleanAnnouncementTitle } from '../../../../lib/supabase';
 import { logAudit } from '../../../../lib/audit';
@@ -114,6 +115,7 @@ export default function AdminEdit() {
         if (f.required && !v) return setMsg(`Please fill in: ${f.label}`);
         if (v === '') v = null;
         if (f.type === 'category' && v) v = Number(v);
+        if (f.type === 'number' && v != null && v !== '') v = Number(v);
       }
       payload[f.name] = v;
     }
@@ -342,6 +344,18 @@ export default function AdminEdit() {
                     required={f.required}
                     label={f.label}
                     maxPhones={6}
+                  />
+                </div>
+              );
+            }
+            if (f.type === 'image' || f.name === 'photo_url') {
+              return (
+                <div key={f.name}>
+                  <ImageUploadField
+                    id={fid}
+                    label={f.label}
+                    value={values[f.name] || ''}
+                    onChange={(val) => setValues((v) => ({ ...v, [f.name]: val }))}
                   />
                 </div>
               );
