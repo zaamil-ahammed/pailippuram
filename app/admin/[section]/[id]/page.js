@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import PageHeader from '../../../../components/PageHeader';
+import MultiPhoneInput from '../../../../components/MultiPhoneInput';
 import { useAdmin } from '../../../../components/AdminGate';
 import { supabase, extractAllPhones, isPinnedAnnouncement, cleanAnnouncementBody, cleanAnnouncementTitle } from '../../../../lib/supabase';
 import { logAudit } from '../../../../lib/audit';
@@ -25,24 +26,6 @@ export default function AdminEdit() {
   const [fromId, setFromId] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
-
-  const addExtraPhone = () => {
-    if (extraPhones.length < 3) {
-      setExtraPhones((prev) => [...prev, '']);
-    }
-  };
-
-  const updateExtraPhone = (idx, val) => {
-    setExtraPhones((prev) => {
-      const copy = [...prev];
-      copy[idx] = val;
-      return copy;
-    });
-  };
-
-  const removeExtraPhone = (idx) => {
-    setExtraPhones((prev) => prev.filter((_, i) => i !== idx));
-  };
 
   const cats = useRows(
     (s) => s.from('categories').select('*').eq('kind', cfg?.match?.kind || 'none').order('name'),
@@ -348,6 +331,21 @@ export default function AdminEdit() {
                   <label htmlFor={fid}>{f.label}</label>
                 </div>
               );
+            if (f.name === 'phone') {
+              return (
+                <div key={f.name}>
+                  <MultiPhoneInput
+                    primaryPhone={values.phone || ''}
+                    onPrimaryChange={(val) => setValues((v) => ({ ...v, phone: val }))}
+                    additionalPhones={extraPhones}
+                    onAdditionalChange={setExtraPhones}
+                    required={f.required}
+                    label={f.label}
+                    maxPhones={6}
+                  />
+                </div>
+              );
+            }
             return (
               <div key={f.name} className="field">
                 <label htmlFor={fid}>{f.label}{f.required ? ' *' : ''}</label>
@@ -366,66 +364,6 @@ export default function AdminEdit() {
                 ) : (
                   <input id={fid} type={f.type} value={values[f.name] || ''} onChange={set(f.name)} />
                 )}
-                {f.name === 'phone' ? (
-                  <div style={{ marginTop: 8 }}>
-                    {extraPhones.map((p, idx) => (
-                      <div key={idx} style={{ marginTop: 8, padding: '10px 12px', background: 'var(--card-bg, #f8fafc)', border: '1px solid var(--card-border, #e2e8f0)', borderRadius: 12 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                          <label htmlFor={`extra-p-${idx}`} style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>
-                            Additional Phone {idx + 2} / രണ്ടാമത്തെ നമ്പർ
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => removeExtraPhone(idx)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#dc2626',
-                              fontSize: 12.5,
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              padding: '2px 6px',
-                            }}
-                          >
-                            ✕ Remove
-                          </button>
-                        </div>
-                        <input
-                          id={`extra-p-${idx}`}
-                          type="tel"
-                          maxLength={20}
-                          placeholder={`Additional phone number ${idx + 2}`}
-                          value={p}
-                          onChange={(e) => updateExtraPhone(idx, e.target.value)}
-                        />
-                      </div>
-                    ))}
-                    {extraPhones.length < 3 && (
-                      <button
-                        type="button"
-                        className="btn light"
-                        onClick={addExtraPhone}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '6px 14px',
-                          minHeight: 36,
-                          fontSize: 13,
-                          borderRadius: 10,
-                          cursor: 'pointer',
-                          marginTop: 6,
-                        }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                          <line x1="12" y1="5" x2="12" y2="19" />
-                          <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
-                        + Add another phone number · മറ്റൊരു നമ്പർ ചേർക്കുക
-                      </button>
-                    )}
-                  </div>
-                ) : null}
               </div>
             );
           })}

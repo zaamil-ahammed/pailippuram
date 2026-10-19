@@ -3,6 +3,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import PageHeader from '../../components/PageHeader';
+import MultiPhoneInput from '../../components/MultiPhoneInput';
 import { sendSubmission } from '../../lib/submit';
 import { BLOOD_GROUPS } from '../../lib/sections';
 
@@ -197,24 +198,6 @@ function ShareFormInner() {
   const [whatsapp, setWhatsapp] = useState('');
   const [area, setArea] = useState('');
   const [details, setDetails] = useState('');
-
-  const addPhone = () => {
-    if (additionalPhones.length < 3) {
-      setAdditionalPhones((prev) => [...prev, '']);
-    }
-  };
-
-  const updatePhone = (index, val) => {
-    setAdditionalPhones((prev) => {
-      const copy = [...prev];
-      copy[index] = val;
-      return copy;
-    });
-  };
-
-  const removePhone = (index) => {
-    setAdditionalPhones((prev) => prev.filter((_, i) => i !== index));
-  };
 
   // Transport specific
   const [vehicleModel, setVehicleModel] = useState('');
@@ -718,80 +701,17 @@ function ShareFormInner() {
           </>
         )}
 
-        {/* 5. Contact Phone Number (Public) */}
-        <div className="field">
-          <label htmlFor="form-phone">
-            Phone Number / ഫോൺ നമ്പർ {type !== 'announcement' ? '*' : '(optional)'}
-          </label>
-          <input
-            id="form-phone"
-            type="tel"
-            maxLength={20}
-            placeholder="Primary phone number"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-        </div>
-
-        {/* Additional Phone Numbers */}
-        {additionalPhones.map((p, idx) => (
-          <div key={idx} className="field">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label htmlFor={`form-phone-${idx + 2}`} style={{ fontSize: 14 }}>
-                Phone Number {idx + 2} / രണ്ടാമത്തെ നമ്പർ <span className="muted small">(optional)</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => removePhone(idx)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#dc2626',
-                  fontSize: 13,
-                  cursor: 'pointer',
-                  padding: '2px 6px',
-                  fontWeight: 600,
-                }}
-              >
-                ✕ Remove
-              </button>
-            </div>
-            <input
-              id={`form-phone-${idx + 2}`}
-              type="tel"
-              maxLength={20}
-              placeholder={`Additional phone number ${idx + 2}`}
-              value={p}
-              onChange={(e) => updatePhone(idx, e.target.value)}
-            />
-          </div>
-        ))}
-
-        {additionalPhones.length < 3 && (
-          <div style={{ marginTop: -2, marginBottom: 4 }}>
-            <button
-              type="button"
-              className="btn light"
-              onClick={addPhone}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 14px',
-                minHeight: 38,
-                fontSize: 13.5,
-                borderRadius: 12,
-                cursor: 'pointer',
-              }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              + Add another phone number / മറ്റൊരു നമ്പർ ചേർക്കുക
-            </button>
-          </div>
-        )}
+        {/* 5. Contact Phone Number & Multiple Numbers (Public) */}
+        <MultiPhoneInput
+          primaryPhone={phone}
+          onPrimaryChange={setPhone}
+          additionalPhones={additionalPhones}
+          onAdditionalChange={setAdditionalPhones}
+          required={type !== 'announcement'}
+          label="Phone Number / ഫോൺ നമ്പർ"
+          placeholder="Primary phone number (e.g. 9846012345)"
+          maxPhones={6}
+        />
 
         {/* WhatsApp Number (optional) */}
         {type !== 'donor' && (
