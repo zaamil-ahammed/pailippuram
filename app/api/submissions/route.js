@@ -26,6 +26,8 @@ async function sendAlertEmail(submission) {
     transport: 'Taxi / Auto / Transportation',
     worker: 'Native Worker / Trade',
     contact: 'Important Contact',
+    school: 'School / Madrassa',
+    madrassa: 'School / Madrassa',
     bus: 'Bus Timing',
     donor: 'Blood Donor',
     announcement: 'Announcement',

@@ -29,6 +29,36 @@ export default function Contacts() {
               </a>
             ))}
           </div>
+
+          <Link
+            href="/schools"
+            className="card"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 14px',
+              background: 'var(--accent-tint)',
+              border: '1.5px solid var(--accent-border)',
+              borderRadius: 14,
+              textDecoration: 'none',
+              marginTop: 4,
+              marginBottom: 6,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 22 }}>🏫</span>
+              <div>
+                <strong style={{ fontSize: 13.5, color: 'var(--ink)', display: 'block' }}>
+                  Schools & Madrassas Directory · സ്കൂൾ / മദ്രസ നമ്പറുകൾ
+                </strong>
+                <span style={{ fontSize: 11.5, color: 'var(--gold-dark)', fontWeight: 600 }}>
+                  HM, Principal, Sadar Ustad, PTA, Bus & Office Roles & Contacts →
+                </span>
+              </div>
+            </div>
+            <span style={{ fontSize: 16, color: 'var(--gold-dark)', fontWeight: 800 }}>→</span>
+          </Link>
           <div style={{ display: 'flex', gap: 10, marginTop: 10, marginBottom: 8 }}>
             <Link
               href="/share?type=contact"

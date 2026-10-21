@@ -35,6 +35,8 @@ export default function AdminList() {
         q = q.or('kind.eq.transport,description.ilike.%[TRANSPORT]%');
       } else if (section === 'shops') {
         q = q.or('kind.eq.business,kind.eq.shop');
+      } else if (section === 'schools') {
+        q = q.or('description.ilike.%[EDUCATION]%,description.ilike.%[SCHOOL]%,description.ilike.%[MADRASSA]%,category_id.eq.aefbe578-e693-4d17-b1b9-3fcbaa58ae19,category_id.eq.690aa10e-e82e-4393-b0a8-f1b814aa322f,title.ilike.%school%,title.ilike.%madrassa%,title.ilike.%madrasa%,title.ilike.%anganwadi%');
       } else {
         for (const [k, v] of Object.entries(cfg.match)) q = q.eq(k, v);
       }

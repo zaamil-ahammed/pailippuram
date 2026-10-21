@@ -130,6 +130,29 @@ const MENUS = [
     areaPlaceholder: 'Location or landmark',
   },
   {
+    type: 'school',
+    label: 'School / Madrassa',
+    ml: 'സ്കൂൾ / മദ്രസ',
+    icon: '🏫',
+    backHref: '/schools',
+    backLabel: 'Schools & Madrassas',
+    desc: 'Submit school, madrassa, or educational institution details with HM, Sadar Ustad, PTA, and office roles & contact numbers.',
+    chipsTitle: 'Institution Type / സ്ഥാപന വിഭാഗം',
+    chips: [
+      { id: 'Govt LP / UP School · സർക്കാർ സ്കൂൾ', label: '🏫 Govt LP / UP School' },
+      { id: 'High School / HSS · ഹൈസ്കൂൾ / ഹയർ സെക്കൻഡറി', label: '🎓 High School / HSS' },
+      { id: 'English Medium School · ഇംഗ്ലീഷ് മീഡിയം', label: '📚 English Medium School' },
+      { id: 'Madrassa & Dars · മദ്രസ / ദർസ്', label: '📖 Madrassa & Dars' },
+      { id: 'Islamic / Arabic College · അറബിക് കോളേജ്', label: '🕌 Islamic / Arabic College' },
+      { id: 'Anganwadi · അങ്കണവാടി', label: '🎒 Anganwadi / Pre-Primary' },
+      { id: 'Other Institution · മറ്റ് സ്ഥാപനങ്ങൾ', label: '🏛️ Other Institution' },
+    ],
+    nameLabel: 'Institution Name / സ്ഥാപനത്തിന്റെ പേര്',
+    namePlaceholder: 'e.g. GLPS Pailippuram, Hidayathul Muslimeen Madrassa',
+    areaLabel: 'Location / Area in Pailippuram / സ്ഥലം',
+    areaPlaceholder: 'e.g. School Padi, Thiruvegappura, Valiyakunnu',
+  },
+  {
     type: 'announcement',
     label: 'Announcement',
     ml: 'അറിയിപ്പുകൾ',
@@ -219,6 +242,14 @@ function ShareFormInner() {
   const [eventDate, setEventDate] = useState('');
   const [organizedBy, setOrganizedBy] = useState('');
 
+  // School & Madrassa specific roles
+  const [headRole, setHeadRole] = useState('Headmaster (HM)');
+  const [headName, setHeadName] = useState('');
+  const [headPhone, setHeadPhone] = useState('');
+  const [ptaName, setPtaName] = useState('');
+  const [ptaPhone, setPtaPhone] = useState('');
+  const [busPhone, setBusPhone] = useState('');
+
   // Custom Category states for user panel
   const [customCatName, setCustomCatName] = useState('');
   const [customCatMl, setCustomCatMl] = useState('');
@@ -242,7 +273,8 @@ function ShareFormInner() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/categories?kind=${encodeURIComponent(type)}`);
+        const queryKind = type === 'school' ? 'contact' : type;
+        const res = await fetch(`/api/categories?kind=${encodeURIComponent(queryKind)}`);
         const data = await res.json();
         if (!cancelled && data.categories) {
           setDbCategories(data.categories);
@@ -276,7 +308,7 @@ function ShareFormInner() {
     });
 
     const combined = [...presetChips, ...extra];
-    if (['transport', 'business', 'worker', 'contact'].includes(type)) {
+    if (['transport', 'business', 'worker', 'contact', 'school'].includes(type)) {
       combined.push({
         id: '__custom__',
         label: '✨ + Custom Category · മറ്റ് പുതിയ വിഭാഗം',
@@ -420,6 +452,20 @@ function ShareFormInner() {
     } else if (type === 'contact') {
       const parts = [
         `Category: ${effectiveCategoryLabel || 'Contact'}`,
+        whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
+        details.trim() && `Details: ${details.trim()}`,
+      ].filter(Boolean);
+      structuredDesc = parts.join('\n');
+    } else if (type === 'school') {
+      const parts = [
+        `[EDUCATION]`,
+        `Type: ${effectiveCategoryLabel || 'School / Madrassa'}`,
+        workingHours.trim() && `Hours: ${workingHours.trim()}`,
+        `Roles:`,
+        (headName.trim() || headPhone.trim()) && `- ${headRole}: ${headName.trim()} | ${headPhone.trim()}`,
+        phone.trim() && `- Office Desk: ${phone.trim()}`,
+        (ptaName.trim() || ptaPhone.trim()) && `- PTA President / Committee: ${ptaName.trim()} | ${ptaPhone.trim()}`,
+        busPhone.trim() && `- School / Madrasa Bus Driver: ${busPhone.trim()}`,
         whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
         details.trim() && `Details: ${details.trim()}`,
       ].filter(Boolean);
@@ -834,6 +880,122 @@ function ShareFormInner() {
               </label>
             </div>
           </>
+        )}
+
+        {/* SCHOOL & MADRASSA ROLES EXTRAS */}
+        {type === 'school' && (
+          <div
+            style={{
+              padding: '16px',
+              background: '#f8fafc',
+              border: '1.5px solid #e2e8f0',
+              borderRadius: 16,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: 14, color: '#334155' }}>
+              <span>👔</span>
+              <span>Key Roles & Direct Contacts · പ്രധാന ഭാരവാഹികൾ</span>
+            </div>
+            <p style={{ margin: 0, fontSize: 12.5, color: '#64748b', lineHeight: 1.4 }}>
+              Enter the names and direct contact numbers for this school or madrassa (HM, Principal, Sadar Ustad, PTA President, etc.).
+            </p>
+
+            {/* Role 1: Head / HM / Sadar */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>
+                Headmaster / Principal / Sadar Ustad
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(130px, 160px) 1fr 1fr', gap: 8 }}>
+                <select
+                  value={headRole}
+                  onChange={(e) => setHeadRole(e.target.value)}
+                  style={{ minHeight: 40, fontSize: 13, fontWeight: 600 }}
+                >
+                  <option value="Headmaster (HM)">Headmaster (HM)</option>
+                  <option value="Headmistress (HM)">Headmistress (HM)</option>
+                  <option value="Principal">Principal</option>
+                  <option value="Sadar Ustad">Sadar Ustad</option>
+                  <option value="Chief Mudarris">Chief Mudarris</option>
+                  <option value="Anganwadi Worker">Anganwadi Worker</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Person Name (പേര്)"
+                  value={headName}
+                  onChange={(e) => setHeadName(e.target.value)}
+                  style={{ minHeight: 40, fontSize: 13 }}
+                />
+                <input
+                  type="tel"
+                  placeholder="Phone Number (നമ്പർ)"
+                  value={headPhone}
+                  onChange={(e) => setHeadPhone(e.target.value)}
+                  style={{ minHeight: 40, fontSize: 13 }}
+                />
+              </div>
+            </div>
+
+            {/* Role 2: PTA President / Committee */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+                  PTA President / Management Leader
+                </label>
+                <input
+                  type="text"
+                  placeholder="Name (പേര്)"
+                  value={ptaName}
+                  onChange={(e) => setPtaName(e.target.value)}
+                  style={{ minHeight: 40, fontSize: 13 }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+                  PTA / Leader Phone Number
+                </label>
+                <input
+                  type="tel"
+                  placeholder="Phone number (ഫോൺ)"
+                  value={ptaPhone}
+                  onChange={(e) => setPtaPhone(e.target.value)}
+                  style={{ minHeight: 40, fontSize: 13 }}
+                />
+              </div>
+            </div>
+
+            {/* Role 3: Bus Driver */}
+            <div className="field" style={{ margin: 0 }}>
+              <label htmlFor="school-bus" style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>
+                🚌 School / Madrasa Bus Driver Phone (optional)
+              </label>
+              <input
+                id="school-bus"
+                type="tel"
+                placeholder="Bus driver phone number"
+                value={busPhone}
+                onChange={(e) => setBusPhone(e.target.value)}
+                style={{ minHeight: 40, fontSize: 13 }}
+              />
+            </div>
+
+            {/* Working / Class Hours */}
+            <div className="field" style={{ margin: 0 }}>
+              <label htmlFor="school-hours" style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>
+                🕒 Class & Working Hours (e.g. 9:30 AM - 4:00 PM or 7:00 AM - 8:30 AM)
+              </label>
+              <input
+                id="school-hours"
+                type="text"
+                placeholder="e.g. 9:30 AM - 4:00 PM"
+                value={workingHours}
+                onChange={(e) => setWorkingHours(e.target.value)}
+                style={{ minHeight: 40, fontSize: 13 }}
+              />
+            </div>
+          </div>
         )}
 
         {/* ANNOUNCEMENT EXTRAS */}

@@ -116,6 +116,20 @@ const TILES = [
     ),
   },
   {
+    href: '/schools',
+    label: 'Numbers & Roles · ഭാരവാഹികൾ',
+    ml: 'സ്കൂളുകൾ & മദ്രസകൾ',
+    bg: '#faf6ee',
+    iconColor: '#8c6d32',
+    border: '#e8ddc8',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+        <path d="M6 12v5c3 3 9 3 12 0v-5" />
+      </svg>
+    ),
+  },
+  {
     href: '/announcements',
     label: 'Announcements',
     ml: 'അറിയിപ്പുകൾ',
@@ -210,6 +224,37 @@ export default function Home() {
             </Link>
           ))}
         </div>
+
+        {/* Featured School & Madrassa Quick Access Banner */}
+        <Link
+          href="/schools"
+          className="card"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 16px',
+            background: 'var(--accent-tint)',
+            border: '1.5px solid var(--accent-border)',
+            borderRadius: 16,
+            textDecoration: 'none',
+            marginTop: 4,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 24 }}>🏫</span>
+            <div>
+              <strong style={{ fontSize: 14.5, color: 'var(--ink)', display: 'block' }}>
+                Schools & Madrassas Directory · സ്കൂൾ & മദ്രസ വിവരങ്ങൾ
+              </strong>
+              <span style={{ fontSize: 12, color: 'var(--gold-dark)', fontWeight: 600 }}>
+                HM, Sadar Ustad, PTA, Bus & Office Roles & Numbers →
+              </span>
+            </div>
+          </div>
+          <span style={{ fontSize: 18, color: 'var(--gold-dark)', fontWeight: 800 }}>→</span>
+        </Link>
+
         <Link href="/share" className="tile dash" style={{ minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />
