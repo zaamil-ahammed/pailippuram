@@ -2,7 +2,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
-import { memoryStore } from '../lib/mockStore';
 
 const AdminContext = createContext(null);
 export const useAdmin = () => useContext(AdminContext);
@@ -15,53 +14,57 @@ export default function AdminGate({ children }) {
   useEffect(() => {
     let active = true;
 
-    // Show manual unlock button after 1.2s if network/auth is slow
+    // Show notice if network/auth check is taking longer than usual
     const slowTimer = setTimeout(() => {
       if (active) setSlowNotice(true);
-    }, 1200);
-
-    // Hard fallback: never keep user stuck on loading screen longer than 2.5s
-    const hardTimer = setTimeout(() => {
-      if (active) {
-        setState((prev) => {
-          if (prev.status === 'loading') {
-            const fallback = memoryStore?.currentUser || { id: 'admin-1', email: 'admin@pailippuram.local' };
-            return { status: 'ok', user: fallback };
-          }
-          return prev;
-        });
-      }
-    }, 2500);
+    }, 2000);
 
     async function verifyAuth() {
       try {
-        const { data } = await supabase.auth.getUser();
+        const { data, error } = await supabase.auth.getUser();
         if (!active) return;
 
-        if (!data?.user) {
-          // If no remote user, check local store
-          if (memoryStore?.currentUser) {
-            setState({ status: 'ok', user: memoryStore.currentUser });
-            return;
-          }
+        if (error || !data?.user) {
           setState({ status: 'out', user: null });
           return;
         }
 
-        // Verify admin role via RPC
+        // Verify admin status
         try {
-          const { data: ok } = await supabase.rpc('is_admin');
+          const { data: ok, error: rpcErr } = await supabase.rpc('is_admin');
           if (!active) return;
-          setState({ status: ok ? 'ok' : 'denied', user: data.user });
+
+          if (!rpcErr && ok) {
+            setState({ status: 'ok', user: data.user });
+            return;
+          }
+
+          // Also check metadata or email for admin identity
+          const isEmailAdmin =
+            data.user.email?.toLowerCase().includes('admin') ||
+            data.user.app_metadata?.role === 'admin' ||
+            data.user.user_metadata?.role === 'admin';
+
+          if (isEmailAdmin) {
+            setState({ status: 'ok', user: data.user });
+          } else {
+            setState({ status: 'denied', user: data.user });
+          }
         } catch {
-          // If RPC fails (e.g. offline/mock), permit verified user
-          if (active) setState({ status: 'ok', user: data.user });
+          // If RPC is unavailable, check if the signed-in user has admin credentials
+          const isEmailAdmin =
+            data.user.email?.toLowerCase().includes('admin') ||
+            data.user.app_metadata?.role === 'admin' ||
+            data.user.user_metadata?.role === 'admin';
+
+          if (active) {
+            setState({ status: isEmailAdmin ? 'ok' : 'denied', user: data.user });
+          }
         }
       } catch (err) {
-        console.warn('[AdminGate] Auth check notice:', err);
+        console.warn('[AdminGate] Auth check error:', err);
         if (active) {
-          const fallback = memoryStore?.currentUser || { id: 'admin-1', email: 'admin@pailippuram.local' };
-          setState({ status: 'ok', user: fallback });
+          setState({ status: 'out', user: null });
         }
       }
     }
@@ -71,7 +74,6 @@ export default function AdminGate({ children }) {
     return () => {
       active = false;
       clearTimeout(slowTimer);
-      clearTimeout(hardTimer);
     };
   }, []);
 
@@ -82,17 +84,6 @@ export default function AdminGate({ children }) {
       // ignore
     }
     setState({ status: 'out', user: null });
-  }
-
-  async function quickSignIn() {
-    setState({ status: 'loading', user: null });
-    try {
-      await supabase.auth.signInWithPassword({ email: 'admin@pailippuram.local' });
-    } catch {
-      // ignore
-    }
-    const adminUser = memoryStore?.currentUser || { id: 'admin-1', email: 'admin@pailippuram.local' };
-    setState({ status: 'ok', user: adminUser });
   }
 
   if (state.status === 'loading') {
@@ -114,7 +105,7 @@ export default function AdminGate({ children }) {
             Checking sign-in...
           </h2>
           <p className="muted" style={{ fontSize: '0.875rem' }}>
-            Verifying administrative credentials
+            Verifying administrator account credentials
           </p>
 
           {slowNotice && (
@@ -127,21 +118,10 @@ export default function AdminGate({ children }) {
               textAlign: 'center',
             }}>
               <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.75rem' }}>
-                Taking longer than expected? You can proceed directly:
+                Taking longer than usual to verify session?
               </p>
-              <button
-                type="button"
-                className="btn dark"
-                style={{ width: '100%', marginBottom: '0.5rem' }}
-                onClick={() => {
-                  const fallback = memoryStore?.currentUser || { id: 'admin-1', email: 'admin@pailippuram.local' };
-                  setState({ status: 'ok', user: fallback });
-                }}
-              >
-                Proceed as Admin
-              </button>
-              <Link className="btn" href="/login" style={{ width: '100%', display: 'block' }}>
-                Go to login
+              <Link className="btn dark" href="/login" style={{ width: '100%', display: 'block' }}>
+                Sign in with admin account
               </Link>
             </div>
           )}
@@ -153,21 +133,18 @@ export default function AdminGate({ children }) {
   if (state.status === 'out') {
     return (
       <div className="page">
-        <main className="body" style={{ maxWidth: '420px', margin: '2rem auto', padding: '1rem' }}>
-          <h1>Admin Portal</h1>
-          <p className="muted" style={{ marginBottom: '1.5rem' }}>
-            Please sign in to manage listings, announcements, bus timings, and committee details.
+        <main className="body" style={{ maxWidth: '420px', margin: '2rem auto', padding: '1.5rem', textAlign: 'center' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>🔒</div>
+          <h1 style={{ fontSize: '1.35rem', marginBottom: '0.35rem' }}>Admin Portal</h1>
+          <p className="muted" style={{ marginBottom: '1.5rem', fontSize: '0.9rem', lineHeight: 1.5 }}>
+            Access to this section requires signing in with an authorized administrator account.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <button
-              type="button"
-              className="btn dark big"
-              onClick={quickSignIn}
-            >
-              Sign in as Admin
-            </button>
-            <Link className="btn big" href="/login" style={{ textAlign: 'center' }}>
-              Standard sign in
+            <Link className="btn dark big" href="/login" style={{ width: '100%', display: 'block', textAlign: 'center' }}>
+              Sign in to Admin Account
+            </Link>
+            <Link className="btn" href="/" style={{ width: '100%', display: 'block', textAlign: 'center' }}>
+              Back to Home
             </Link>
           </div>
         </main>
@@ -178,12 +155,19 @@ export default function AdminGate({ children }) {
   if (state.status === 'denied') {
     return (
       <div className="page">
-        <main className="body" style={{ maxWidth: '420px', margin: '2rem auto', padding: '1rem' }}>
-          <h1>No Access</h1>
-          <p className="muted">This account is not authorized as an administrator.</p>
-          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem' }}>
-            <button type="button" className="btn" onClick={signOut}>Sign out</button>
-            <button type="button" className="btn dark" onClick={quickSignIn}>Switch to Admin</button>
+        <main className="body" style={{ maxWidth: '420px', margin: '2rem auto', padding: '1.5rem', textAlign: 'center' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>🚫</div>
+          <h1 style={{ fontSize: '1.35rem', marginBottom: '0.35rem' }}>Access Denied</h1>
+          <p className="muted" style={{ marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+            The signed-in account is not authorized as an administrator.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <button type="button" className="btn dark" onClick={signOut}>
+              Sign out
+            </button>
+            <Link className="btn" href="/login" style={{ width: '100%', display: 'block', textAlign: 'center' }}>
+              Sign in with another account
+            </Link>
           </div>
         </main>
       </div>

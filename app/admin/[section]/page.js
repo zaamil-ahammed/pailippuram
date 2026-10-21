@@ -124,9 +124,29 @@ export default function AdminList() {
         </form>
       </PageHeader>
       <main className="body">
-        {section !== 'bus' && (
-          <Link className="btn dark big" href={`/admin/${section}/new`}>+ Add new {cfg.singular}</Link>
-        )}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {section !== 'bus' && (
+            <Link className="btn dark big" href={`/admin/${section}/new`} style={{ flex: 1, minWidth: 180 }}>
+              + Add new {cfg.singular}
+            </Link>
+          )}
+          {['shops', 'workers', 'transport', 'contacts'].includes(section) && (
+            <Link
+              className="btn light"
+              href="/admin/categories"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 13.5,
+                fontWeight: 700,
+                padding: '0 16px',
+              }}
+            >
+              🏷️ Categories
+            </Link>
+          )}
+        </div>
         <div className="chips">
           {FILTERS.map((f) => (
             <button key={f} type="button" className={`chip ${filter === f ? 'on' : ''}`} onClick={() => setFilter(f)}>{f}</button>

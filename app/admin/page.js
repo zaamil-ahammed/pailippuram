@@ -167,6 +167,33 @@ export default function AdminHome() {
           ))}
         </div>
 
+        <Link
+          href="/admin/categories"
+          className="card"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '14px 18px',
+            background: 'var(--accent-tint)',
+            border: '1.5px solid var(--accent-border)',
+            borderRadius: 16,
+            marginTop: 12,
+            textDecoration: 'none',
+          }}
+        >
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 18 }}>🏷️</span>
+              <strong style={{ fontSize: 15, color: 'var(--ink)' }}>Categories Manager · വിഭാഗങ്ങൾ</strong>
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--muted)' }}>
+              Add custom categories, view entry counts & manage visibility on user panel
+            </p>
+          </div>
+          <span style={{ fontSize: 18, color: 'var(--gold-dark)', fontWeight: 800 }}>→</span>
+        </Link>
+
         <h2>Needs a fresh check</h2>
         <div className="note">
           <strong>{outdated} items not verified in {OUTDATED_DAYS} days</strong>
@@ -175,6 +202,7 @@ export default function AdminHome() {
 
         <h2>Site tools</h2>
         <div className="stack">
+          <Link className="linkrow" href="/admin/categories"><span>🏷️ Manage categories & subcategories</span><span aria-hidden="true">&#8250;</span></Link>
           <Link className="linkrow" href="/admin/log"><span>Activity log: who changed what</span><span aria-hidden="true">&#8250;</span></Link>
           <Link className="linkrow" href="/admin/admins"><span>Admins and roles</span><span aria-hidden="true">&#8250;</span></Link>
           <Link className="linkrow" href="/admin/backup"><span>Export a backup</span><span aria-hidden="true">&#8250;</span></Link>

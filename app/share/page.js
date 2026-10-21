@@ -219,6 +219,11 @@ function ShareFormInner() {
   const [eventDate, setEventDate] = useState('');
   const [organizedBy, setOrganizedBy] = useState('');
 
+  // Custom Category states for user panel
+  const [customCatName, setCustomCatName] = useState('');
+  const [customCatMl, setCustomCatMl] = useState('');
+  const [dbCategories, setDbCategories] = useState([]);
+
   // Common submitter metadata
   const [submitterContact, setSubmitterContact] = useState('');
   const [consent, setConsent] = useState(true);
@@ -228,19 +233,89 @@ function ShareFormInner() {
   const [errorMsg, setErrorMsg] = useState('');
   const [done, setDone] = useState(false);
 
-  // Reset or initialize default chip when type changes
+  // Fetch registered DB categories for the active kind
   useEffect(() => {
-    if (activeMenu.chips && activeMenu.chips.length > 0) {
+    if (type === 'donor' || type === 'announcement' || type === 'other') {
+      setDbCategories([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/categories?kind=${encodeURIComponent(type)}`);
+        const data = await res.json();
+        if (!cancelled && data.categories) {
+          setDbCategories(data.categories);
+        }
+      } catch {
+        // keep presets
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [type]);
+
+  // Combine static presets with live database categories (and "+ Custom Category" option)
+  const displayedChips = useMemo(() => {
+    if (type === 'donor') return activeMenu.chips || [];
+    const presetChips = activeMenu.chips || [];
+    const seen = new Set(presetChips.map((c) => c.id.toLowerCase()));
+
+    const extra = [];
+    dbCategories.forEach((c) => {
+      const key = (c.name || '').toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        extra.push({
+          id: c.name,
+          catId: c.id,
+          label: c.name_ml ? `${c.name} · ${c.name_ml}` : c.name,
+        });
+      }
+    });
+
+    const combined = [...presetChips, ...extra];
+    if (['transport', 'business', 'worker', 'contact'].includes(type)) {
+      combined.push({
+        id: '__custom__',
+        label: '✨ + Custom Category · മറ്റ് പുതിയ വിഭാഗം',
+        isCustomTrigger: true,
+      });
+    }
+    return combined;
+  }, [activeMenu, dbCategories, type]);
+
+  // Reset or initialize default chip when type, displayedChips, or searchParams change
+  useEffect(() => {
+    const qCat = searchParams ? searchParams.get('cat') : null;
+    const isCustom = searchParams ? searchParams.get('custom') : null;
+
+    if (qCat) {
+      const match = displayedChips.find(
+        (c) =>
+          c.id.toLowerCase() === qCat.toLowerCase() ||
+          (c.label && c.label.toLowerCase().includes(qCat.toLowerCase()))
+      );
+      if (match) {
+        setSelectedChip(match.id);
+      } else {
+        setSelectedChip('__custom__');
+        setCustomCatName(qCat);
+      }
+    } else if (isCustom === '1') {
+      setSelectedChip('__custom__');
+    } else if (displayedChips && displayedChips.length > 0) {
       if (type === 'donor') {
         setBloodGroup('O+');
         setSelectedChip('O+');
       } else {
-        setSelectedChip(activeMenu.chips[0].id);
+        setSelectedChip(displayedChips[0].id);
       }
     } else {
       setSelectedChip('');
     }
-  }, [type, activeMenu]);
+  }, [type, displayedChips, searchParams]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -264,13 +339,51 @@ function ShareFormInner() {
 
     setBusy(true);
 
+    let categoryIdToTag = null;
+    let effectiveCategoryLabel = selectedChip;
+
+    if (selectedChip === '__custom__') {
+      if (!customCatName.trim() || customCatName.trim().length < 2) {
+        setErrorMsg('Please enter your custom category name (at least 2 characters).');
+        setBusy(false);
+        return;
+      }
+      effectiveCategoryLabel = customCatName.trim();
+      try {
+        const catRes = await fetch('/api/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            kind: type === 'business' ? 'business' : type,
+            name: customCatName.trim(),
+            name_ml: customCatMl.trim() || undefined,
+          }),
+        });
+        const catData = await catRes.json();
+        if (catData && catData.category && catData.category.id) {
+          categoryIdToTag = catData.category.id;
+        }
+      } catch {
+        // proceed with label
+      }
+    } else {
+      const matchedDb = dbCategories.find(
+        (c) =>
+          c.name.toLowerCase() === (selectedChip || '').toLowerCase() ||
+          (c.id && String(c.id) === String(selectedChip))
+      );
+      if (matchedDb) {
+        categoryIdToTag = matchedDb.id;
+      }
+    }
+
     // Compile customized structured description tailored to each menu
     let structuredDesc = '';
     let finalTitle = name.trim();
 
     if (type === 'transport') {
       const parts = [
-        `Vehicle Type: ${selectedChip || 'Transport'}`,
+        `Vehicle Type: ${effectiveCategoryLabel || 'Transport'}`,
         vehicleModel.trim() && `Vehicle Model / No: ${vehicleModel.trim()}`,
         is24Hours && `Service Availability: 24 Hours / 24 മണിക്കൂറും ലഭ്യമാണ്`,
         whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
@@ -279,7 +392,7 @@ function ShareFormInner() {
       structuredDesc = parts.join('\n');
     } else if (type === 'business') {
       const parts = [
-        `Category: ${selectedChip || 'Shop'}`,
+        `Category: ${effectiveCategoryLabel || 'Shop'}`,
         workingHours.trim() && `Hours: ${workingHours.trim()}`,
         hasHomeDelivery && `Home Delivery: Available / ഹോം ഡെലിവറി ഉണ്ട്`,
         whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
@@ -288,7 +401,7 @@ function ShareFormInner() {
       structuredDesc = parts.join('\n');
     } else if (type === 'worker') {
       const parts = [
-        `Trade / Skill: ${selectedChip || 'Worker'}`,
+        `Trade / Skill: ${effectiveCategoryLabel || 'Worker'}`,
         experience.trim() && `Work details: ${experience.trim()}`,
         whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
         details.trim() && `Extra details: ${details.trim()}`,
@@ -306,14 +419,14 @@ function ShareFormInner() {
       structuredDesc = parts.join('\n');
     } else if (type === 'contact') {
       const parts = [
-        `Category: ${selectedChip || 'Contact'}`,
+        `Category: ${effectiveCategoryLabel || 'Contact'}`,
         whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
         details.trim() && `Details: ${details.trim()}`,
       ].filter(Boolean);
       structuredDesc = parts.join('\n');
     } else if (type === 'announcement') {
       const parts = [
-        `Category: ${selectedChip || 'Notice'}`,
+        `Category: ${effectiveCategoryLabel || 'Notice'}`,
         eventDate && `Event Date: ${eventDate}`,
         organizedBy.trim() && `Organized By: ${organizedBy.trim()}`,
         details.trim() && `Details: ${details.trim()}`,
@@ -321,11 +434,15 @@ function ShareFormInner() {
       structuredDesc = parts.join('\n');
     } else {
       const parts = [
-        selectedChip && `Subject: ${selectedChip}`,
+        effectiveCategoryLabel && `Subject: ${effectiveCategoryLabel}`,
         whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
         details.trim() && `Details: ${details.trim()}`,
       ].filter(Boolean);
       structuredDesc = parts.join('\n');
+    }
+
+    if (categoryIdToTag) {
+      structuredDesc = `${structuredDesc}\n[CAT_ID:${categoryIdToTag}]`;
     }
 
     let primaryPhone = phone.trim();
@@ -535,27 +652,71 @@ function ShareFormInner() {
                 })}
               </div>
             ) : (
-              // Standard Subcategory Selection Chips
-              <div className="chips" style={{ marginTop: 4, gap: 6 }}>
-                {activeMenu.chips.map((c) => {
-                  const sel = selectedChip === c.id;
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      className={`chip ${sel ? 'on' : ''}`}
-                      onClick={() => setSelectedChip(c.id)}
-                      style={{
-                        fontSize: 13,
-                        padding: '4px 12px',
-                        minHeight: 34,
-                      }}
-                    >
-                      {c.label}
-                    </button>
-                  );
-                })}
-              </div>
+              // Standard & Custom Subcategory Selection Chips
+              <>
+                <div className="chips" style={{ marginTop: 4, gap: 6 }}>
+                  {displayedChips.map((c) => {
+                    const sel = selectedChip === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className={`chip ${sel ? 'on' : ''}`}
+                        onClick={() => setSelectedChip(c.id)}
+                        style={{
+                          fontSize: 13,
+                          padding: '4px 12px',
+                          minHeight: 34,
+                          fontWeight: c.isCustomTrigger ? 800 : undefined,
+                          borderColor: c.isCustomTrigger && sel ? 'var(--accent)' : undefined,
+                        }}
+                      >
+                        {c.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Custom Category Input Block (shown when "+ Custom Category" is chosen) */}
+                {selectedChip === '__custom__' && (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      padding: '14px 16px',
+                      background: 'var(--accent-tint)',
+                      border: '1.5px solid var(--accent-border)',
+                      borderRadius: 14,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8,
+                    }}
+                  >
+                    <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>
+                      Enter Custom Category Name / പുതിയ വിഭാഗത്തിന്റെ പേര് *
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      <input
+                        type="text"
+                        placeholder="Category Name in English *"
+                        value={customCatName}
+                        onChange={(e) => setCustomCatName(e.target.value)}
+                        required={selectedChip === '__custom__'}
+                        style={{ minHeight: 40, fontSize: 13 }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Malayalam Name (മലയാളത്തിൽ - optional)"
+                        value={customCatMl}
+                        onChange={(e) => setCustomCatMl(e.target.value)}
+                        style={{ minHeight: 40, fontSize: 13 }}
+                      />
+                    </div>
+                    <p className="small muted" style={{ margin: 0, fontSize: 11.5 }}>
+                      💡 This category will be created and saved. Both you and the admin can see it, and it will automatically appear in the public listings page once your entry is approved.
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
