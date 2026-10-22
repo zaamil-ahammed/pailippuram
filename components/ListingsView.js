@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import PageHeader from './PageHeader';
+import SearchBar from './SearchBar';
 import ListingCard from './ListingCard';
 import { useRows } from '../lib/useRows';
 import {
@@ -268,25 +269,22 @@ export default function ListingsView({
   return (
     <div className="page">
       <PageHeader title={title} ml={ml}>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setTerm(typed);
+        <SearchBar
+          id="listings-search"
+          placeholder="Search by name, category, or area (മലയാളത്തിലും)..."
+          ariaLabel={`Search ${title}`}
+          value={typed}
+          resultsCount={typed.trim().length > 0 ? displayedRows.length : undefined}
+          onChange={(e) => {
+            setTyped(e.target.value);
+            setTerm(e.target.value);
           }}
-        >
-          <label htmlFor="q" className="hp">Search</label>
-          <input
-            id="q"
-            type="search"
-            placeholder="Search by name, category, or area..."
-            value={typed}
-            onChange={(e) => {
-              setTyped(e.target.value);
-              // live search filter
-              setTerm(e.target.value);
-            }}
-          />
-        </form>
+          onClear={() => {
+            setTyped('');
+            setTerm('');
+          }}
+          onSubmit={() => setTerm(typed)}
+        />
       </PageHeader>
 
       <main className="body">

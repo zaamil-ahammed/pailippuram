@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import PageHeader from '../../components/PageHeader';
+import SearchBar from '../../components/SearchBar';
 import { useRows } from '../../lib/useRows';
 import { formatDate } from '../../lib/supabase';
 import { shareServiceOrApp } from '../../lib/share';
@@ -336,26 +337,16 @@ export default function SchoolsPage() {
           </p>
 
           {/* Search Bar */}
-          <form onSubmit={(e) => e.preventDefault()} style={{ marginTop: 4 }}>
-            <label htmlFor="school-search" className="hp">Search schools and madrassas</label>
-            <input
+          <div style={{ marginTop: 4 }}>
+            <SearchBar
               id="school-search"
-              type="search"
-              placeholder="Search by role (HM, Sadar, PTA, Bus), person name, school, area or number..."
+              placeholder="Search by role (HM, Sadar, PTA, Bus), person name, school..."
+              ariaLabel="Search schools and madrassas"
               value={term}
               onChange={(e) => setTerm(e.target.value)}
-              style={{
-                width: '100%',
-                minHeight: 44,
-                padding: '0 16px',
-                borderRadius: 14,
-                fontSize: 14,
-                background: '#ffffff',
-                border: 'none',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-              }}
+              onClear={() => setTerm('')}
             />
-          </form>
+          </div>
         </div>
       </PageHeader>
 

@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import PageHeader from '../../components/PageHeader';
+import SearchBar from '../../components/SearchBar';
 import { cleanSearch, formatDate } from '../../lib/supabase';
 import { useRows } from '../../lib/useRows';
 import { shareServiceOrApp } from '../../lib/share';
@@ -32,10 +33,22 @@ export default function Bus() {
   return (
     <div className="page">
       <PageHeader title="Bus timing" ml="ബസ് സമയം">
-        <form onSubmit={(e) => { e.preventDefault(); setTerm(typed); }}>
-          <label htmlFor="bq" className="hp">Search routes</label>
-          <input id="bq" type="search" placeholder="Search by place" value={typed} onChange={(e) => setTyped(e.target.value)} />
-        </form>
+        <SearchBar
+          id="bus-search"
+          placeholder="Search destination or route (Tirur, Kuttippuram...)"
+          ariaLabel="Search bus routes"
+          value={typed}
+          resultsCount={typed.trim().length > 0 ? rows.length : undefined}
+          onChange={(e) => {
+            setTyped(e.target.value);
+            setTerm(e.target.value);
+          }}
+          onClear={() => {
+            setTyped('');
+            setTerm('');
+          }}
+          onSubmit={() => setTerm(typed)}
+        />
       </PageHeader>
       <main className="body">
         <p className="note">Bus times can change. Please check with the bus staff if it is important.</p>

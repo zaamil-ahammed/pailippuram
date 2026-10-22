@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import PageHeader from '../../../components/PageHeader';
 import { useAdmin } from '../../../components/AdminGate';
+import SearchBar from '../../../components/SearchBar';
 import { supabase } from '../../../lib/supabase';
 import { showToast } from '../../../lib/toast';
 
@@ -291,16 +292,15 @@ export default function AdminCategoriesPage() {
   return (
     <div className="page">
       <PageHeader title="Manage Categories" ml="വിഭാഗങ്ങൾ ക്രമീകരിക്കുക" back="/admin" backLabel="Admin">
-        <form onSubmit={(e) => e.preventDefault()}>
-          <label htmlFor="cat-search" className="hp">Search categories</label>
-          <input
-            id="cat-search"
-            type="search"
-            placeholder="Search categories across all menus (English or മലയാളം)..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </form>
+        <SearchBar
+          id="cat-search"
+          placeholder="Search categories across all menus (English or മലയാളം)..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onClear={() => setSearch('')}
+          resultsCount={filteredCategories.length}
+          ariaLabel="Search categories across all menus"
+        />
       </PageHeader>
 
       <main className="body">

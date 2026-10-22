@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Brand, MenuButton, SharePageButton } from '../components/PageHeader';
+import HomeOmniSearch from '../components/HomeOmniSearch';
 import { formatDate, isConfigured, isPinnedAnnouncement, cleanAnnouncementBody, cleanAnnouncementTitle } from '../lib/supabase';
 import { useRows } from '../lib/useRows';
 
@@ -146,8 +147,6 @@ const TILES = [
 ];
 
 export default function Home() {
-  const router = useRouter();
-  const [q, setQ] = useState('');
   const news = useRows((s) => s.from('announcements').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(6), []);
 
   const sortedNews = [...news.rows].sort((a, b) => {
@@ -168,15 +167,7 @@ export default function Home() {
           <Brand />
           <p className="sub" style={{ marginTop: 8 }}>പൈലിപ്പുറത്തെ വിവരങ്ങൾ ഒരിടത്ത്</p>
         </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            router.push(`/shops?q=${encodeURIComponent(q)}`);
-          }}
-        >
-          <label htmlFor="hq" className="hp">Search</label>
-          <input id="hq" type="search" placeholder="Search shops and services" value={q} onChange={(e) => setQ(e.target.value)} />
-        </form>
+        <HomeOmniSearch />
       </header>
       <main className="body">
         {!isConfigured ? (

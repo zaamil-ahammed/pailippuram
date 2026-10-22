@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import PageHeader from '../../../components/PageHeader';
+import SearchBar from '../../../components/SearchBar';
 import { useAdmin } from '../../../components/AdminGate';
 import { cleanSearch, formatDate, supabase, isPinnedAnnouncement } from '../../../lib/supabase';
 import { logAudit } from '../../../lib/audit';
@@ -136,10 +137,22 @@ export default function AdminList() {
   return (
     <div className="page">
       <PageHeader title={`Manage: ${cfg.label}`} back="/admin" backLabel="Admin">
-        <form onSubmit={(e) => { e.preventDefault(); setTerm(typed); }}>
-          <label htmlFor="aq" className="hp">Search items</label>
-          <input id="aq" type="search" placeholder="Search" value={typed} onChange={(e) => setTyped(e.target.value)} />
-        </form>
+        <SearchBar
+          id="admin-search"
+          placeholder={`Search ${cfg.label.toLowerCase()}...`}
+          ariaLabel={`Search ${cfg.label}`}
+          value={typed}
+          resultsCount={typed.trim().length > 0 ? displayRows.length : undefined}
+          onChange={(e) => {
+            setTyped(e.target.value);
+            setTerm(e.target.value);
+          }}
+          onClear={() => {
+            setTyped('');
+            setTerm('');
+          }}
+          onSubmit={() => setTerm(typed)}
+        />
       </PageHeader>
       <main className="body">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
