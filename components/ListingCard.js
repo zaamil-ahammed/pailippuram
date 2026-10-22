@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { formatDate, whatsappLink, extractAllPhones } from '../lib/supabase';
+import { formatDate, whatsappLink, extractAllPhones, cleanDescription } from '../lib/supabase';
 import { shareServiceOrApp } from '../lib/share';
 
 // One shop or contact on a public page.
@@ -9,10 +9,8 @@ export default function ListingCard({ row }) {
   const phones = extractAllPhones(row);
   const wa = whatsappLink(row.whatsapp || phones[0]);
 
-  // Clean description of redundant Alt Phones line since dedicated Call buttons are shown
-  const displayDesc = row.description
-    ? row.description.replace(/(?:\n|^)(?:Alt(?:\s*Phones?|\s*Numbers?)?|Additional\s*Phones?|Phone\s*2|Ph\s*2):\s*[^\n]+/gi, '').trim()
-    : '';
+  // Clean description of bracket tags ([WORKER], [TRANSPORT], etc.) and internal labels
+  const displayDesc = cleanDescription(row.description, row.categories?.name);
 
   const handleShare = async () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -29,12 +27,14 @@ export default function ListingCard({ row }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const subtitle = [row.categories?.name, row.area].filter(Boolean).join(' · ');
+
   return (
     <article className="card" id={`item-${row.id}`}>
       <div className="cardhead">
         <div>
           <h3>{row.title}</h3>
-          <p className="muted">{[row.categories?.name, row.area].filter(Boolean).join(' · ')}</p>
+          {subtitle ? <p className="muted">{subtitle}</p> : null}
         </div>
         <button
           type="button"
@@ -66,7 +66,7 @@ export default function ListingCard({ row }) {
       <div className="btnrow" style={{ marginTop: 4 }}>
         {phones.map((p, idx) => (
           <a key={idx} className="btn dark" href={`tel:${p.replace(/\D/g, '')}`}>
-            {phones.length > 1 ? `Call (${idx + 1}): ${p}` : `Call ${p}`}
+            Call {p}
           </a>
         ))}
         {wa ? (

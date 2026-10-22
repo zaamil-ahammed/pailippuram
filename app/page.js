@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Brand, MenuButton, SharePageButton } from '../components/PageHeader';
-import HomeOmniSearch from '../components/HomeOmniSearch';
 import { formatDate, isConfigured, isPinnedAnnouncement, cleanAnnouncementBody, cleanAnnouncementTitle } from '../lib/supabase';
 import { useRows } from '../lib/useRows';
 
@@ -117,20 +116,6 @@ const TILES = [
     ),
   },
   {
-    href: '/schools',
-    label: 'Numbers & Roles · ഭാരവാഹികൾ',
-    ml: 'സ്കൂളുകൾ & മദ്രസകൾ',
-    bg: '#faf6ee',
-    iconColor: '#8c6d32',
-    border: '#e8ddc8',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-        <path d="M6 12v5c3 3 9 3 12 0v-5" />
-      </svg>
-    ),
-  },
-  {
     href: '/announcements',
     label: 'Announcements',
     ml: 'അറിയിപ്പുകൾ',
@@ -147,6 +132,8 @@ const TILES = [
 ];
 
 export default function Home() {
+  const router = useRouter();
+  const [q, setQ] = useState('');
   const news = useRows((s) => s.from('announcements').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(6), []);
 
   const sortedNews = [...news.rows].sort((a, b) => {
@@ -167,7 +154,26 @@ export default function Home() {
           <Brand />
           <p className="sub" style={{ marginTop: 8 }}>പൈലിപ്പുറത്തെ വിവരങ്ങൾ ഒരിടത്ത്</p>
         </div>
-        <HomeOmniSearch />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const t = q.trim();
+            if (t) {
+              router.push(`/listings?q=${encodeURIComponent(t)}`);
+            } else {
+              router.push('/listings');
+            }
+          }}
+        >
+          <label htmlFor="hq" className="hp">Search</label>
+          <input
+            id="hq"
+            type="search"
+            placeholder="Search shops, contacts, workers, transport..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </form>
       </header>
       <main className="body">
         {!isConfigured ? (
@@ -215,8 +221,6 @@ export default function Home() {
             </Link>
           ))}
         </div>
-
-
         <Link href="/share" className="tile dash" style={{ minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />

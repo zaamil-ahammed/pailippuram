@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { MenuButton } from '../../components/PageHeader';
 import { useAdmin } from '../../components/AdminGate';
-import { supabase, formatDate, extractAllPhones } from '../../lib/supabase';
+import { supabase, formatDate, extractAllPhones, cleanDescription } from '../../lib/supabase';
 import { logAudit } from '../../lib/audit';
 import { useRows } from '../../lib/useRows';
 import { OUTDATED_DAYS, SECTIONS, SECTION_KEYS, SUBMISSION_LABEL, SUBMISSION_SECTION, getSubmissionSection, getSubmissionLabel } from '../../lib/sections';
@@ -120,7 +120,7 @@ export default function AdminHome() {
                 <span className="small">{formatDate(r.created_at)}</span>
               </div>
               <h3>{r.title}</h3>
-              {r.description ? <p style={{ whiteSpace: 'pre-line' }}>{r.description}</p> : null}
+              {cleanDescription(r.description) ? <p style={{ whiteSpace: 'pre-line' }}>{cleanDescription(r.description)}</p> : null}
               <p className="small">
                 {(() => {
                   const itemPhones = extractAllPhones(r);

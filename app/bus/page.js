@@ -79,11 +79,13 @@ export default function Bus() {
                 </svg>
               </button>
             </div>
-            <div className="times">
-              {(r.times || '').split('\n').map((t) => t.trim()).filter(Boolean).map((t, i) => (
-                <span key={i}>{t}</span>
-              ))}
-            </div>
+            {r.times ? (
+              <div className="times">
+                {r.times.split('\n').map((t) => t.trim()).filter(Boolean).map((t, i) => (
+                  <span key={i}>{t}</span>
+                ))}
+              </div>
+            ) : null}
             {r.verified_at ? <p className="muted small">Checked {formatDate(r.verified_at)}</p> : null}
           </article>
         ))}

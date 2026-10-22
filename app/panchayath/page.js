@@ -1,6 +1,6 @@
 'use client';
 import PageHeader from '../../components/PageHeader';
-import { formatDate } from '../../lib/supabase';
+import { formatDate, cleanDescription } from '../../lib/supabase';
 import { PANCHAYATH_SECTIONS } from '../../lib/sections';
 import { useRows } from '../../lib/useRows';
 
@@ -21,7 +21,7 @@ function Extra({ value }) {
       <div className="btnrow" style={{ marginTop: 4 }}>
         {numbers.map((n, idx) => (
           <a key={idx} className="btn dark" href={`tel:${n.replace(/\D/g, '')}`}>
-            {numbers.length > 1 ? `Call (${idx + 1}): ${n}` : `Call ${n}`}
+            Call {n}
           </a>
         ))}
       </div>
@@ -81,7 +81,7 @@ export default function Panchayath() {
               {items.map((r) => (
                 <article key={r.id} className="card">
                   <h3>{r.title}</h3>
-                  {r.detail ? <p>{r.detail}</p> : null}
+                  {cleanDescription(r.detail) ? <p>{cleanDescription(r.detail)}</p> : null}
                   <Extra value={r.extra} />
                   {r.verified_at ? <p className="muted small">Checked {formatDate(r.verified_at)}</p> : null}
                 </article>

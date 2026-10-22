@@ -67,7 +67,7 @@ export default function Donors() {
               <div className="cardhead">
                 <div>
                   <h3>{d.name}</h3>
-                  <p className="muted">{cleanArea || d.area}</p>
+                  {(cleanArea || d.area) ? <p className="muted">{cleanArea || d.area}</p> : null}
                 </div>
                 <span className="group">{d.blood_group}</span>
               </div>
@@ -75,7 +75,7 @@ export default function Donors() {
               <div className="btnrow">
                 {donorPhones.map((p, idx) => (
                   <a key={idx} className="btn dark" href={`tel:${p.replace(/\D/g, '')}`}>
-                    {donorPhones.length > 1 ? `Call (${idx + 1}): ${p}` : `Call ${p}`}
+                    Call {p}
                   </a>
                 ))}
                 {donorPhones.length > 0 ? (
