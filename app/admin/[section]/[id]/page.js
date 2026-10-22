@@ -9,6 +9,7 @@ import { supabase, extractAllPhones, isPinnedAnnouncement, cleanAnnouncementBody
 import { logAudit } from '../../../../lib/audit';
 import { useRows } from '../../../../lib/useRows';
 import { SECTIONS } from '../../../../lib/sections';
+import { showToast } from '../../../../lib/toast';
 
 // One form for every section. The fields come from lib/sections.js.
 export default function AdminEdit() {
@@ -354,6 +355,13 @@ export default function AdminEdit() {
     }
 
     setBusy(false);
+    const itemTitle = payload.title || payload.name || payload.route || 'Item';
+    const singular = cfg.singular ? cfg.singular[0].toUpperCase() + cfg.singular.slice(1) : 'Item';
+    showToast({
+      type: 'success',
+      message: isNew ? `${singular} published successfully!` : `${singular} updated successfully!`,
+      sub: `${itemTitle} · Changes are live in directory`,
+    });
     router.push(`/admin/${section}`);
   }
 

@@ -7,6 +7,7 @@ import { supabase, formatDate, extractAllPhones } from '../../lib/supabase';
 import { logAudit } from '../../lib/audit';
 import { useRows } from '../../lib/useRows';
 import { OUTDATED_DAYS, SECTIONS, SECTION_KEYS, SUBMISSION_LABEL, SUBMISSION_SECTION, getSubmissionSection, getSubmissionLabel } from '../../lib/sections';
+import { showToast } from '../../lib/toast';
 
 function outdatedCutoff() {
   return new Date(Date.now() - OUTDATED_DAYS * 86400000).toISOString();
@@ -79,6 +80,11 @@ export default function AdminHome() {
     }
     if (error) return setActionError(error.message || 'Could not save. Please try again.');
     await logAudit(user, { action, table: 'submissions', rowId: row.id, note: row.title });
+    showToast({
+      type: status === 'rejected' ? 'info' : 'success',
+      message: status === 'rejected' ? 'Submission rejected' : 'Submission marked approved',
+      sub: row.title,
+    });
     queue.reload();
   }
 

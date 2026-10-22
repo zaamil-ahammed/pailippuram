@@ -9,6 +9,7 @@ import { logAudit } from '../../../lib/audit';
 import { useRows } from '../../../lib/useRows';
 import { VICTORY_WINGS, VICTORY_PORTFOLIOS } from '../../../lib/sections';
 import { STARTER_VICTORY_MEMBERS } from '../../../lib/mockStore';
+import { showToast } from '../../../lib/toast';
 
 const DEFAULT_LINK = 'https://www.instagram.com/victory_pailippuram';
 
@@ -169,6 +170,11 @@ export default function AdminVictoryPage() {
         });
 
         setSuccessMsg(`Added "${payload.name}" successfully!`);
+        showToast({
+          type: 'success',
+          message: 'Committee member added!',
+          sub: `${payload.name} (${payload.role})`,
+        });
       } else {
         const { error: updateErr } = await supabase
           .from('victory_members')
@@ -185,6 +191,11 @@ export default function AdminVictoryPage() {
         });
 
         setSuccessMsg(`Updated "${payload.name}" successfully!`);
+        showToast({
+          type: 'success',
+          message: 'Member details updated!',
+          sub: `${payload.name} (${payload.role})`,
+        });
       }
 
       reload();
@@ -218,6 +229,12 @@ export default function AdminVictoryPage() {
         note: `${nextStatus === 'hidden' ? 'Hidden' : 'Made live'}: ${member.name}`,
       });
 
+      showToast({
+        type: 'success',
+        message: nextStatus === 'hidden' ? 'Member hidden from committee' : 'Member is now live!',
+        sub: member.name,
+      });
+
       reload();
     } catch (err) {
       setErrorMsg(err.message || 'Could not change status.');
@@ -244,6 +261,12 @@ export default function AdminVictoryPage() {
         table: 'victory_members',
         rowId: member.id,
         note: `Removed ${member.name} from Victory Club committee`,
+      });
+
+      showToast({
+        type: 'success',
+        message: 'Committee member deleted',
+        sub: member.name,
       });
 
       reload();

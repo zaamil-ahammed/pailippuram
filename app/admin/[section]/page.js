@@ -8,6 +8,7 @@ import { cleanSearch, formatDate, supabase, isPinnedAnnouncement } from '../../.
 import { logAudit } from '../../../lib/audit';
 import { useRows } from '../../../lib/useRows';
 import { OUTDATED_DAYS, SECTIONS } from '../../../lib/sections';
+import { showToast } from '../../../lib/toast';
 
 const FILTERS = ['All', 'Live', 'Hidden', 'Outdated'];
 
@@ -70,6 +71,11 @@ export default function AdminList() {
     }
     if (err) return setActionError(err.message || 'Could not save. Please try again.');
     await logAudit(user, { action: isCurrentlyLive ? 'hide' : 'show', table: cfg.table, rowId: row.id, note: cfg.title(row) });
+    showToast({
+      type: 'success',
+      message: isCurrentlyLive ? 'Item hidden from public directory' : 'Item is now live!',
+      sub: cfg.title(row),
+    });
     reload();
   }
 
@@ -85,6 +91,11 @@ export default function AdminList() {
     const { error: err } = await supabase.from('announcements').update({ body: newBody, updated_at: new Date().toISOString() }).eq('id', row.id);
     if (err) return setActionError(err.message || 'Could not update pin status.');
     await logAudit(user, { action: currentlyPinned ? 'unpin announcement' : 'pin announcement', table: 'announcements', rowId: row.id, note: row.title });
+    showToast({
+      type: 'success',
+      message: currentlyPinned ? 'Announcement unpinned' : 'Announcement pinned to top 📌',
+      sub: row.title,
+    });
     reload();
   }
 
@@ -98,6 +109,11 @@ export default function AdminList() {
     const { error: err } = await supabase.from(cfg.table).delete().eq('id', row.id);
     if (err) return setActionError('Could not delete. Please try again.');
     await logAudit(user, { action: 'delete', table: cfg.table, rowId: row.id, note: cfg.title(row) });
+    showToast({
+      type: 'success',
+      message: 'Item deleted permanently',
+      sub: cfg.title(row),
+    });
     reload();
   }
 

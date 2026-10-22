@@ -2,7 +2,7 @@ import './globals.css';
 import Link from 'next/link';
 import Shell from '../components/Shell';
 import InstallPrompt from '../components/InstallPrompt';
-import ShareToast from '../components/ShareToast';
+import Toast from '../components/Toast';
 
 export const metadata = {
   title: 'Nammude Pailippuram',
@@ -20,7 +20,7 @@ export default function RootLayout({ children }) {
       <body>
         <Shell>
           <InstallPrompt />
-          <ShareToast />
+          <Toast />
           {children}
           <footer className="footer" style={{ maxWidth: 640, margin: '0 auto' }}>
             <span>

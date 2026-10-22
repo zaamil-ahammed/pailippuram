@@ -4,6 +4,7 @@ import Link from 'next/link';
 import PageHeader from '../../../components/PageHeader';
 import { useAdmin } from '../../../components/AdminGate';
 import { supabase } from '../../../lib/supabase';
+import { showToast } from '../../../lib/toast';
 
 export const MENU_SECTIONS = [
   { key: 'all', label: 'All Categories', kind: null, icon: '🏷️' },
@@ -194,6 +195,12 @@ export default function AdminCategoriesPage() {
             ? `Category "${data.category.name}" added successfully!`
             : `Category "${data.category.name}" already exists.`
         );
+
+        showToast({
+          type: 'success',
+          message: data.created ? 'Category added successfully!' : 'Category already exists',
+          sub: data.category?.name || formName.trim(),
+        });
       } else if (modalMode === 'edit' && editingCat) {
         const res = await fetch('/api/categories', {
           method: 'PUT',
@@ -220,6 +227,11 @@ export default function AdminCategoriesPage() {
         }
 
         setSuccessMsg(`Category "${data.category.name}" updated successfully!`);
+        showToast({
+          type: 'success',
+          message: 'Category updated successfully!',
+          sub: data.category?.name || formName.trim(),
+        });
       }
 
       setTimeout(() => setSuccessMsg(''), 4000);
@@ -259,6 +271,11 @@ export default function AdminCategoriesPage() {
       }
 
       setSuccessMsg(`Category "${cat.name}" removed.`);
+      showToast({
+        type: 'success',
+        message: 'Category removed',
+        sub: cat.name,
+      });
       setTimeout(() => setSuccessMsg(''), 3000);
       await loadCategories();
     } catch (err) {
