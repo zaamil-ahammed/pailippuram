@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import PageHeader from '../../../components/PageHeader';
 import { useAdmin } from '../../../components/AdminGate';
+import { supabase } from '../../../lib/supabase';
 
 export const MENU_SECTIONS = [
   { key: 'all', label: 'All Categories', kind: null, icon: '🏷️' },
@@ -60,7 +61,24 @@ export default function AdminCategoriesPage() {
       const res = await fetch('/api/categories?withCounts=true');
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to load categories');
-      setCategories(data.categories || []);
+      const loaded = data.categories || [];
+      setCategories(loaded);
+
+      // Keep client-side query store in sync so forms and dropdowns see new categories immediately
+      if (loaded.length > 0) {
+        try {
+          for (const c of loaded) {
+            await supabase.from('categories').upsert({
+              id: c.id,
+              kind: c.kind,
+              name: c.name,
+              name_ml: c.name_ml || null,
+            });
+          }
+        } catch {
+          // ignore
+        }
+      }
     } catch (err) {
       console.warn(err);
       setError(err.message || 'Could not load categories');
@@ -160,6 +178,17 @@ export default function AdminCategoriesPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to create category');
 
+        try {
+          const clientCat = data.category || {
+            kind: formKind,
+            name: formName.trim(),
+            name_ml: formNameMl.trim() || null,
+          };
+          await supabase.from('categories').insert(clientCat);
+        } catch {
+          // ignore
+        }
+
         setSuccessMsg(
           data.created
             ? `Category "${data.category.name}" added successfully!`
@@ -179,6 +208,17 @@ export default function AdminCategoriesPage() {
 
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to update category');
+
+        try {
+          await supabase.from('categories').update({
+            kind: formKind,
+            name: formName.trim(),
+            name_ml: formNameMl.trim() || null,
+          }).eq('id', editingCat.id);
+        } catch {
+          // ignore
+        }
+
         setSuccessMsg(`Category "${data.category.name}" updated successfully!`);
       }
 
@@ -195,7 +235,7 @@ export default function AdminCategoriesPage() {
   // Handle deleting a category
   async function handleDelete(cat) {
     if (cat.listing_count > 0) {
-      alert(`Cannot delete "${cat.name}" because it has ${cat.listing_count} active listing(s). Reassign or delete those listings first.`);
+      setError(`Cannot delete "${cat.name}" because it has ${cat.listing_count} active listing(s). Reassign or delete those listings first.`);
       return;
     }
 
@@ -212,11 +252,17 @@ export default function AdminCategoriesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to delete category');
 
+      try {
+        await supabase.from('categories').delete().eq('id', cat.id);
+      } catch {
+        // ignore
+      }
+
       setSuccessMsg(`Category "${cat.name}" removed.`);
       setTimeout(() => setSuccessMsg(''), 3000);
       await loadCategories();
     } catch (err) {
-      alert(err.message || 'Could not delete category');
+      setError(err.message || 'Could not delete category');
     }
   }
 

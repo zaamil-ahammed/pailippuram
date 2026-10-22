@@ -29,7 +29,16 @@ export default function AdminEdit() {
   const [busy, setBusy] = useState(false);
 
   const cats = useRows(
-    (s) => s.from('categories').select('*').eq('kind', cfg?.match?.kind || 'none').order('name'),
+    (s) => {
+      let q = s.from('categories').select('*').order('name');
+      if (section === 'schools') {
+        return q.or('kind.eq.education,kind.eq.school,kind.eq.contact');
+      }
+      if (section === 'shops') {
+        return q.or('kind.eq.business,kind.eq.shop');
+      }
+      return q.eq('kind', cfg?.match?.kind || 'none');
+    },
     [section]
   );
 
@@ -41,7 +50,7 @@ export default function AdminEdit() {
         const { data, error } = await supabase.from(cfg.table).select('*').eq('id', id).maybeSingle();
         if (error || !data) return setMsg('Could not find this item.');
         setOriginal(data);
-        setStatus(data.status);
+        setStatus(data.status || 'approved');
         const allNums = extractAllPhones(data);
         if (allNums.length > 1) {
           setExtraPhones(allNums.slice(1));
@@ -154,7 +163,7 @@ export default function AdminEdit() {
         const altText = `Alt Phones: ${cleanExtra.join(', ')}`;
         desc = desc ? `${desc}\n${altText}` : altText;
       }
-      payload.description = desc ? desc.slice(0, 1500) : null;
+      payload.description = desc ? desc.slice(0, 600) : null;
     } else if (cfg.table === 'donors') {
       let areaStr = payload.area || '';
       areaStr = areaStr.replace(/(?:·|\s)*Alt:\s*[+0-9\s,-]+/gi, '').trim();
@@ -172,14 +181,22 @@ export default function AdminEdit() {
     payload.status = effectiveStatus;
     if (cfg.table === 'announcements') {
       const isPinned = Boolean(payload.pinned);
+      payload.is_pinned = isPinned;
       delete payload.pinned;
       let bodyText = cleanAnnouncementBody(payload.body || '');
       if (isPinned) {
         bodyText = `[PINNED]\n${bodyText}`;
       }
-      payload.body = bodyText || payload.title || 'Details';
+      payload.body = (bodyText || payload.title || 'Details').slice(0, 1500);
     }
-    if (user?.id) payload.updated_by = user.id;
+
+    const isValidUuid = (val) =>
+      typeof val === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val);
+
+    if (isValidUuid(user?.id)) {
+      payload.updated_by = user.id;
+    }
     if (cfg.verify && verify) payload.verified_at = new Date().toISOString();
 
     setBusy(true);
@@ -191,8 +208,8 @@ export default function AdminEdit() {
         let insertPayload = { ...data, ...cfg.match };
         let res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
 
-        // 1. updated_by column missing or RLS issue
-        if (res.error && res.error.message && res.error.message.includes('updated_by')) {
+        // 1. updated_by column missing or RLS/UUID syntax issue
+        if (res.error && res.error.message && (res.error.message.includes('updated_by') || res.error.message.includes('uuid'))) {
           const { updated_by, ...cleaned } = insertPayload;
           insertPayload = cleaned;
           res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
@@ -221,13 +238,13 @@ export default function AdminEdit() {
           } else if (intendedKind === 'transport' && !safeDesc.includes('[TRANSPORT]')) {
             safeDesc = safeDesc ? `[TRANSPORT]\n${safeDesc}` : '[TRANSPORT]';
           }
-          const baseData = { ...insertPayload, description: safeDesc.slice(0, 1500) || null };
+          const baseData = { ...insertPayload, description: safeDesc.slice(0, 600) || null };
 
           const candidateKinds = ['business', 'shop', 'contact'].filter((k) => k !== intendedKind);
           for (const candKind of candidateKinds) {
             let tryPayload = { ...baseData, kind: candKind };
             let candRes = await supabase.from(cfg.table).insert(tryPayload).select('id').single();
-            if (candRes.error && candRes.error.message.includes('updated_by')) {
+            if (candRes.error && (candRes.error.message.includes('updated_by') || candRes.error.message.includes('uuid'))) {
               const { updated_by, ...noUser } = tryPayload;
               tryPayload = noUser;
               candRes = await supabase.from(cfg.table).insert(tryPayload).select('id').single();
@@ -254,7 +271,7 @@ export default function AdminEdit() {
         let updatePayload = { ...data };
         let res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
 
-        if (res.error && res.error.message && res.error.message.includes('updated_by')) {
+        if (res.error && res.error.message && (res.error.message.includes('updated_by') || res.error.message.includes('uuid'))) {
           const { updated_by, ...cleaned } = updatePayload;
           updatePayload = cleaned;
           res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
@@ -278,13 +295,13 @@ export default function AdminEdit() {
           } else if (intendedKind === 'transport' && !safeDesc.includes('[TRANSPORT]')) {
             safeDesc = safeDesc ? `[TRANSPORT]\n${safeDesc}` : '[TRANSPORT]';
           }
-          const baseUpdate = { ...updatePayload, description: safeDesc.slice(0, 1500) || null };
+          const baseUpdate = { ...updatePayload, description: safeDesc.slice(0, 600) || null };
 
           const candidateKinds = ['business', 'shop', 'contact'].filter((k) => k !== intendedKind);
           for (const candKind of candidateKinds) {
             let tryPayload = { ...baseUpdate, kind: candKind };
             let candRes = await supabase.from(cfg.table).update(tryPayload).eq('id', id);
-            if (candRes.error && candRes.error.message.includes('updated_by')) {
+            if (candRes.error && (candRes.error.message.includes('updated_by') || candRes.error.message.includes('uuid'))) {
               const { updated_by, ...noUser } = tryPayload;
               tryPayload = noUser;
               candRes = await supabase.from(cfg.table).update(tryPayload).eq('id', id);
