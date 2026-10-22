@@ -6,10 +6,9 @@ export default function Shops() {
   return (
     <ListingsView
       kind="business"
-      sectionKey="shops"
-      title="Local Shops"
-      ml="കടകൾ & വ്യാപാരങ്ങൾ"
-      intro="Where people buy products or visit a business: groceries, bakeries, textiles, hardware, automotive shops, and retail stores in Pailippuram."
+      title="Local shops"
+      ml="കടകൾ"
+      intro="Supermarkets, pharmacies, bakeries, textiles, and local businesses around Pailippuram."
       top={
         <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
           <Link

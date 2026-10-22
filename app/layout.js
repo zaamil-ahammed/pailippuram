@@ -24,11 +24,11 @@ export default function RootLayout({ children }) {
           {children}
           <footer className="footer" style={{ maxWidth: 640, margin: '0 auto' }}>
             <span>
-               <Link href="/about" scroll={true}>About and privacy</Link>
+              <Link href="/correction">Request a correction</Link> · <Link href="/about">About and privacy</Link>
             </span>
             <span style={{ textAlign: 'center' }}>
               A{' '}
-              <Link href="/victory" scroll={true} aria-label="Victory Arts & Sports Club">
+              <Link href="https://www.instagram.com/victory_pailippuram" target="_blank" rel="noopener noreferrer">
                 <strong>Victory</strong>
               </Link>{' '}
               Initiative · Crafted by{' '}

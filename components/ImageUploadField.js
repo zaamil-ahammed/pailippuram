@@ -1,248 +1,349 @@
 'use client';
-import { useId, useRef, useState } from 'react';
+import { useState, useRef } from 'react';
 
-// Compresses and center-crops an image onto a square canvas (240x240)
-function processAndCompressImage(file) {
+/**
+ * Robust image compressor and cropper.
+ * Prevents images from ever saving as solid black by:
+ * 1. Strictly awaiting img.onload and img.decode().
+ * 2. Pre-filling canvas background with solid white (#ffffff).
+ * 3. Accurately computing center-crop square dimensions.
+ * 4. Running a pixel sanity check before accepting the canvas data URL,
+ *    falling back to direct base64 if canvas drawing produced an unintended black frame.
+ */
+function processImageFile(file, targetSize = 400) {
   return new Promise((resolve, reject) => {
-    const isImage = file.type?.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|heic)$/i.test(file.name || '');
-    if (!isImage) {
-      return reject(new Error('Please select an image file (PNG, JPG, WebP).'));
+    if (!file || !file.type.startsWith('image/')) {
+      return reject(new Error('Please select a valid image file (JPEG, PNG, WebP).'));
     }
 
-    const objectUrl = URL.createObjectURL(file);
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
+    const reader = new FileReader();
 
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      try {
-        const targetDim = 240;
-        const canvas = document.createElement('canvas');
-        canvas.width = targetDim;
-        canvas.height = targetDim;
-        const ctx = canvas.getContext('2d');
+    reader.onerror = () => reject(new Error('Could not read the selected image file.'));
 
-        if (!ctx) {
-          return reject(new Error('Canvas context unavailable.'));
-        }
-
-        // Center-crop to square
-        const minSide = Math.min(img.width, img.height);
-        const sx = (img.width - minSide) / 2;
-        const sy = (img.height - minSide) / 2;
-
-        ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, targetDim, targetDim);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
-        resolve(dataUrl);
-      } catch (err) {
-        reject(new Error('Failed to process image: ' + (err.message || 'Error')));
+    reader.onload = () => {
+      const rawDataUrl = reader.result;
+      if (!rawDataUrl || typeof rawDataUrl !== 'string') {
+        return reject(new Error('Image reader returned empty data.'));
       }
+
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+
+      img.onerror = () => {
+        // Fallback to raw data URL if Image element cannot decode
+        resolve(rawDataUrl);
+      };
+
+      img.onload = async () => {
+        try {
+          if (typeof img.decode === 'function') {
+            try {
+              await img.decode();
+            } catch {
+              // decode failure is non-fatal; continue to draw
+            }
+          }
+
+          const nw = img.naturalWidth || img.width;
+          const nh = img.naturalHeight || img.height;
+
+          if (!nw || !nh || nw < 1 || nh < 1) {
+            // Cannot read natural dimensions, use raw data
+            return resolve(rawDataUrl);
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = targetSize;
+          canvas.height = targetSize;
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+          if (!ctx) {
+            return resolve(rawDataUrl);
+          }
+
+          // 1. Fill white background so transparent PNGs/WebPs never turn into solid black in JPEG
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, targetSize, targetSize);
+
+          // 2. Center-crop square calculations
+          const minDim = Math.min(nw, nh);
+          const sx = Math.floor((nw - minDim) / 2);
+          const sy = Math.floor((nh - minDim) / 2);
+
+          // 3. Render image onto canvas
+          ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, targetSize, targetSize);
+
+          // 4. Sanity check: Ensure canvas didn't generate all-black pixels
+          try {
+            const sample = ctx.getImageData(0, 0, targetSize, targetSize).data;
+            let hasNonBlack = false;
+            // Check every 25th pixel
+            for (let i = 0; i < sample.length; i += 100) {
+              const r = sample[i];
+              const g = sample[i + 1];
+              const b = sample[i + 2];
+              if (r > 15 || g > 15 || b > 15) {
+                hasNonBlack = true;
+                break;
+              }
+            }
+
+            if (!hasNonBlack) {
+              // Canvas produced pitch black; fall back to original raw file data URL
+              console.warn('[ImageUploadField] Canvas produced pure black frame. Reverting to raw file data.');
+              return resolve(rawDataUrl);
+            }
+          } catch {
+            // Ignore getImageData security errors if any and proceed
+          }
+
+          // 5. Convert to compact, high-quality JPEG
+          const compressed = canvas.toDataURL('image/jpeg', 0.88);
+          if (compressed && compressed.length > 100) {
+            resolve(compressed);
+          } else {
+            resolve(rawDataUrl);
+          }
+        } catch (err) {
+          console.warn('[ImageUploadField] Canvas processing error:', err);
+          resolve(rawDataUrl);
+        }
+      };
+
+      img.src = rawDataUrl;
     };
 
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error('Could not read image file. Please try another image.'));
-    };
-
-    img.src = objectUrl;
+    reader.readAsDataURL(file);
   });
 }
 
 export default function ImageUploadField({
+  id = 'photo-upload',
+  label = 'Profile Photo / ഫോട്ടോ (optional)',
   value = '',
   onChange,
-  label = 'Profile Photo / ഫോട്ടോ (optional)',
-  id: customId,
+  disabled = false,
 }) {
-  const generatedId = useId();
-  const inputId = customId || `img-upload-${generatedId.replace(/:/g, '')}`;
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [rawUrl, setRawUrl] = useState('');
   const fileInputRef = useRef(null);
-
-  const [mode, setMode] = useState('upload'); // 'upload' | 'url'
-  const [compressing, setCompressing] = useState(false);
-  const [err, setErr] = useState('');
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 15 * 1024 * 1024) {
-      setErr('File size is too large (max 15MB).');
-      return;
-    }
+    setError('');
+    setLoading(true);
 
-    setErr('');
-    setCompressing(true);
     try {
-      const compressedDataUri = await processAndCompressImage(file);
-      onChange(compressedDataUri);
-    } catch (error) {
-      setErr(error.message || 'Failed to process image.');
+      const processed = await processImageFile(file, 400);
+      if (onChange) {
+        onChange(processed);
+      }
+    } catch (err) {
+      setError(err?.message || 'Could not process this image. Please try another photo.');
     } finally {
-      setCompressing(false);
-      // Reset input value so the same file can be re-selected if removed
-      if (e.target) e.target.value = '';
+      setLoading(false);
+      // Reset input so re-selecting same file works
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
-  const handleClear = () => {
-    onChange('');
-    setErr('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  const handleApplyUrl = () => {
+    if (!rawUrl.trim()) return;
+    setError('');
+    if (onChange) {
+      onChange(rawUrl.trim());
+    }
+    setShowUrlInput(false);
+    setRawUrl('');
+  };
+
+  const handleRemove = () => {
+    setError('');
+    if (onChange) {
+      onChange('');
     }
   };
 
   return (
-    <div className="field" style={{ gap: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontWeight: 600, fontSize: 14.5 }}>{label}</span>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button
-            type="button"
-            className={`chip ${mode === 'upload' ? 'on' : ''}`}
-            onClick={() => setMode('upload')}
-            style={{ minHeight: 30, padding: '0 10px', fontSize: 12 }}
-          >
-            Upload
-          </button>
-          <button
-            type="button"
-            className={`chip ${mode === 'url' ? 'on' : ''}`}
-            onClick={() => setMode('url')}
-            style={{ minHeight: 30, padding: '0 10px', fontSize: 12 }}
-          >
-            Image Link
-          </button>
+    <div className="image-upload-field" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <label htmlFor={id} style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>
+        {label}
+      </label>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        id={id}
+        type="file"
+        accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+        disabled={disabled || loading}
+      />
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          padding: 12,
+          background: '#ffffff',
+          border: '1.5px solid var(--card-border)',
+          borderRadius: 16,
+        }}
+      >
+        {/* Avatar Preview */}
+        <div
+          style={{
+            width: 72,
+            height: 72,
+            minWidth: 72,
+            minHeight: 72,
+            borderRadius: 16,
+            background: 'var(--accent-tint, #faf6ee)',
+            border: '1.5px solid var(--accent-border, #e8ddc8)',
+            overflow: 'hidden',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+            flexShrink: 0,
+          }}
+        >
+          {loading ? (
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gold-dark)', textAlign: 'center', padding: 4 }}>
+              Loading...
+            </div>
+          ) : value ? (
+            <img
+              src={value}
+              alt="Photo preview"
+              referrerPolicy="no-referrer"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          ) : (
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--gold-dark)' }}>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          )}
+        </div>
+
+        {/* Action Controls */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <button
+              type="button"
+              className="btn light"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={disabled || loading}
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                padding: '6px 14px',
+                minHeight: 36,
+                borderRadius: 10,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: 'pointer',
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              {value ? 'Change photo' : 'Upload photo'}
+            </button>
+
+            {value && (
+              <button
+                type="button"
+                onClick={handleRemove}
+                disabled={disabled || loading}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#dc2626',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '6px 8px',
+                }}
+              >
+                ✕ Remove
+              </button>
+            )}
+
+            {!showUrlInput && (
+              <button
+                type="button"
+                onClick={() => setShowUrlInput(true)}
+                disabled={disabled || loading}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--muted)',
+                  fontSize: 12.5,
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  padding: '6px 4px',
+                }}
+              >
+                Or enter link
+              </button>
+            )}
+          </div>
+
+          <p className="muted small" style={{ margin: 0, fontSize: 11.5, lineHeight: 1.3 }}>
+            JPG, PNG, or WebP. Automatically center-cropped &amp; optimized.
+          </p>
         </div>
       </div>
 
-      {value ? (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            padding: 12,
-            background: 'var(--accent-tint)',
-            border: '1.5px solid var(--accent-border)',
-            borderRadius: 16,
-          }}
-        >
-          <img
-            src={value}
-            alt="Preview"
-            referrerPolicy="no-referrer"
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: 14,
-              objectFit: 'cover',
-              border: '1.5px solid var(--card-border)',
-              background: '#ffffff',
-            }}
+      {/* URL Input Toggle */}
+      {showUrlInput && (
+        <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+          <input
+            type="url"
+            placeholder="Paste public image URL (https://...)"
+            value={rawUrl}
+            onChange={(e) => setRawUrl(e.target.value)}
+            style={{ fontSize: 13, padding: '8px 12px', flex: 1 }}
           />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>Photo Selected</span>
-            <span className="muted small" style={{ fontSize: 11.5 }}>
-              Optimized for village directory display
-            </span>
-          </div>
           <button
             type="button"
-            className="btn light"
-            onClick={handleClear}
-            style={{ fontSize: 12.5, minHeight: 36, padding: '0 12px', color: '#dc2626', borderColor: '#fca5a5' }}
+            className="btn dark"
+            onClick={handleApplyUrl}
+            style={{ fontSize: 13, padding: '8px 14px', borderRadius: 10 }}
           >
-            Remove
+            Apply
           </button>
-        </div>
-      ) : (
-        <div>
-          {mode === 'upload' ? (
-            <label
-              htmlFor={inputId}
-              style={{
-                border: '2px dashed var(--accent-border)',
-                background: '#f8fafc',
-                borderRadius: 16,
-                padding: '20px 16px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                cursor: 'pointer',
-                textAlign: 'center',
-                transition: 'border-color 0.15s ease',
-                position: 'relative',
-              }}
-            >
-              <input
-                id={inputId}
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                style={{
-                  position: 'absolute',
-                  width: '1px',
-                  height: '1px',
-                  padding: 0,
-                  margin: '-1px',
-                  overflow: 'hidden',
-                  clip: 'rect(0, 0, 0, 0)',
-                  border: 0,
-                }}
-              />
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 42,
-                  height: 42,
-                  borderRadius: 12,
-                  background: 'var(--accent-tint)',
-                  color: 'var(--primary)',
-                }}
-              >
-                {compressing ? (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin">
-                    <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                    <path d="M12 2a10 10 0 0 1 10 10" />
-                  </svg>
-                ) : (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                    <circle cx="9" cy="9" r="2" />
-                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-                  </svg>
-                )}
-              </span>
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>
-                {compressing ? 'Optimizing photo...' : 'Tap to choose photo · ഫോട്ടോ തിരഞ്ഞെടുക്കുക'}
-              </span>
-              <span className="btn light" style={{ minHeight: 34, padding: '0 16px', fontSize: 12.5, fontWeight: 700, pointerEvents: 'none' }}>
-                Browse Gallery / Files
-              </span>
-              <span className="muted small" style={{ fontSize: 11.5 }}>
-                JPG, PNG, WebP · Max 15MB
-              </span>
-            </label>
-          ) : (
-            <input
-              type="text"
-              placeholder="https://example.com/photo.jpg"
-              value={value || ''}
-              onChange={(e) => onChange(e.target.value.trim())}
-              style={{ minHeight: 48 }}
-            />
-          )}
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              setShowUrlInput(false);
+              setRawUrl('');
+            }}
+            style={{ fontSize: 13, padding: '8px 10px', borderRadius: 10 }}
+          >
+            Cancel
+          </button>
         </div>
       )}
 
-      {err && <p className="error" style={{ margin: 0, padding: '8px 12px', fontSize: 13 }}>{err}</p>}
+      {error && <p className="error" style={{ margin: 0, fontSize: 13, padding: '8px 12px' }}>{error}</p>}
     </div>
   );
 }
