@@ -17,8 +17,11 @@ export default function Login() {
     setMsg('');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
-    if (error) setMsg('Could not sign in. Check your email and password.');
-    else router.push('/admin');
+    if (error) {
+      setMsg(error.message || 'Could not sign in. Check your email and password.');
+    } else {
+      window.location.href = '/admin';
+    }
   }
 
   return (
