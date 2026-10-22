@@ -225,35 +225,6 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Featured School & Madrassa Quick Access Banner */}
-        <Link
-          href="/schools"
-          className="card"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '12px 16px',
-            background: 'var(--accent-tint)',
-            border: '1.5px solid var(--accent-border)',
-            borderRadius: 16,
-            textDecoration: 'none',
-            marginTop: 4,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 24 }}>🏫</span>
-            <div>
-              <strong style={{ fontSize: 14.5, color: 'var(--ink)', display: 'block' }}>
-                Schools & Madrassas Directory · സ്കൂൾ & മദ്രസ വിവരങ്ങൾ
-              </strong>
-              <span style={{ fontSize: 12, color: 'var(--gold-dark)', fontWeight: 600 }}>
-                HM, Sadar Ustad, PTA, Bus & Office Roles & Numbers →
-              </span>
-            </div>
-          </div>
-          <span style={{ fontSize: 18, color: 'var(--gold-dark)', fontWeight: 800 }}>→</span>
-        </Link>
 
         <Link href="/share" className="tile dash" style={{ minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">

@@ -113,9 +113,19 @@ export default function AdminEdit() {
       } else {
         v = typeof v === 'string' ? v.trim() : v;
         if (f.required && !v) return setMsg(`Please fill in: ${f.label}`);
-        if (v === '') v = null;
-        if (f.type === 'category' && v) v = Number(v);
-        if (f.type === 'number' && v != null && v !== '') v = Number(v);
+        if (v === '' || v === 'none' || v === 'null') v = null;
+        if (f.type === 'category') {
+          if (v == null) {
+            v = null;
+          } else {
+            const num = Number(v);
+            v = !isNaN(num) && String(num) === String(v).trim() ? num : v;
+          }
+        }
+        if (f.type === 'number' && v != null && v !== '') {
+          const num = Number(v);
+          v = isNaN(num) ? null : num;
+        }
       }
       payload[f.name] = v;
     }
@@ -290,29 +300,43 @@ export default function AdminEdit() {
       }
     }
 
-    const result = await executeSave(payload);
-    error = result.error;
-    rowId = result.rowId;
+    let result;
+    try {
+      result = await executeSave(payload);
+    } catch (saveErr) {
+      console.error('[AdminEdit save error]', saveErr);
+      setBusy(false);
+      return setMsg(saveErr?.message || 'Could not save. Please check the fields and try again.');
+    }
+
+    error = result?.error;
+    rowId = result?.rowId || id;
 
     if (error) {
       setBusy(false);
       return setMsg(error.message || 'Could not save. Please check the fields and try again.');
     }
 
-    const changes = {};
-    for (const [k, v] of Object.entries(payload)) {
-      if (k === 'updated_by') continue;
-      const before = original ? original[k] ?? null : null;
-      if (before !== v) changes[k] = [before, v];
-    }
-    await logAudit(user, { action: isNew ? 'create' : 'edit', table: cfg.table, rowId, note: note || null, changes });
-    if (fromId) {
-      let { error: subErr } = await supabase.from('submissions').update({ status: 'approved' }).eq('id', fromId);
-      if (subErr && subErr.message && subErr.message.includes('status_check')) {
-        await supabase.from('submissions').update({ status: 'approved' }).eq('id', fromId);
+    try {
+      const changes = {};
+      for (const [k, v] of Object.entries(payload)) {
+        if (k === 'updated_by') continue;
+        const before = original ? original[k] ?? null : null;
+        if (before !== v) changes[k] = [before, v];
       }
-      await logAudit(user, { action: 'approve submission', table: 'submissions', rowId: fromId, note: `published as ${cfg.singular}` });
+      await logAudit(user, { action: isNew ? 'create' : 'edit', table: cfg.table, rowId, note: note || null, changes });
+      if (fromId) {
+        let { error: subErr } = await supabase.from('submissions').update({ status: 'approved' }).eq('id', fromId);
+        if (subErr && subErr.message && subErr.message.includes('status_check')) {
+          await supabase.from('submissions').update({ status: 'approved' }).eq('id', fromId);
+        }
+        await logAudit(user, { action: 'approve submission', table: 'submissions', rowId: fromId, note: `published as ${cfg.singular}` });
+      }
+    } catch (auditErr) {
+      console.warn('[AdminEdit audit error]', auditErr);
     }
+
+    setBusy(false);
     router.push(`/admin/${section}`);
   }
 
