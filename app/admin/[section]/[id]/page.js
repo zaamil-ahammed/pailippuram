@@ -120,9 +120,12 @@ export default function AdminEdit() {
       let v = values[f.name];
       if (f.type === 'checkbox') {
         if (f.required && !v) return setMsg(`Please confirm: ${f.label}`);
+        v = Boolean(v);
       } else {
         v = typeof v === 'string' ? v.trim() : v;
-        if (f.required && !v) return setMsg(`Please fill in: ${f.label}`);
+        if (f.required && (v === '' || v === null || v === undefined)) {
+          return setMsg(`Please fill in: ${f.label}`);
+        }
         if (v === '' || v === 'none' || v === 'null') v = null;
         if (f.type === 'category') {
           if (v == null) {
@@ -132,56 +135,84 @@ export default function AdminEdit() {
             v = !isNaN(num) && String(num) === String(v).trim() ? num : v;
           }
         }
-        if (f.type === 'number' && v != null && v !== '') {
-          const num = Number(v);
-          v = isNaN(num) ? null : num;
+        if (f.type === 'number') {
+          if (v != null && v !== '') {
+            const num = Number(v);
+            v = isNaN(num) ? (f.default ?? 1) : num;
+          } else {
+            v = f.default != null ? f.default : (f.name === 'display_order' ? 1 : null);
+          }
         }
       }
       payload[f.name] = v;
     }
 
-    // Process and safeguard phone numbers
-    const cleanExtra = extraPhones.map((p) => p.trim()).filter(Boolean);
-    let primaryPhone = payload.phone ? payload.phone.trim() : null;
-    if (primaryPhone) {
-      const splitNums = primaryPhone.split(/[,/;\n]/).map((p) => p.trim()).filter(Boolean);
-      if (splitNums.length > 1) {
-        primaryPhone = splitNums[0];
-        for (let i = 1; i < splitNums.length; i++) {
-          if (!cleanExtra.includes(splitNums[i])) {
-            cleanExtra.push(splitNums[i]);
+    // Minimum length validation for core title/name/route inputs
+    const coreTitle = payload.title || payload.name || payload.route;
+    if (coreTitle && coreTitle.length < 2 && cfg.table !== 'victory_members') {
+      return setMsg(`${cfg.fields[0]?.label || 'Name/Title'} must be at least 2 characters.`);
+    }
+
+    // Safeguard max character lengths across PostgreSQL check constraints
+    if (payload.title) payload.title = payload.title.slice(0, 120);
+    if (payload.name) payload.name = payload.name.slice(0, cfg.table === 'donors' ? 80 : 120);
+    if (payload.route) payload.route = payload.route.slice(0, 120);
+    if (payload.bus_name) payload.bus_name = payload.bus_name.slice(0, 80);
+    if (payload.direction) payload.direction = payload.direction.slice(0, 80);
+    if (payload.times) payload.times = payload.times.slice(0, 800);
+    if (payload.area) payload.area = payload.area.slice(0, 80);
+    if (payload.hours) payload.hours = payload.hours.slice(0, 80);
+    if (payload.extra) payload.extra = payload.extra.slice(0, 80);
+    if (payload.detail) payload.detail = payload.detail.slice(0, 1000);
+    if (payload.role) payload.role = payload.role.slice(0, 120);
+    if (payload.role_ml) payload.role_ml = payload.role_ml.slice(0, 120);
+    if (payload.whatsapp) payload.whatsapp = payload.whatsapp.slice(0, 20);
+
+    // Process phone numbers ONLY for tables that have a phone field
+    const hasPhoneField = cfg.fields.some((f) => f.name === 'phone');
+    if (hasPhoneField) {
+      const cleanExtra = extraPhones.map((p) => p.trim()).filter(Boolean);
+      let primaryPhone = payload.phone ? payload.phone.trim() : null;
+      if (primaryPhone) {
+        const splitNums = primaryPhone.split(/[,/;\n]/).map((p) => p.trim()).filter(Boolean);
+        if (splitNums.length > 1) {
+          primaryPhone = splitNums[0];
+          for (let i = 1; i < splitNums.length; i++) {
+            if (!cleanExtra.includes(splitNums[i])) {
+              cleanExtra.push(splitNums[i]);
+            }
           }
         }
       }
-    }
-    // Limit primary phone to 20 chars to prevent phone_check constraint failure
-    payload.phone = primaryPhone ? primaryPhone.slice(0, 20) : null;
+      payload.phone = primaryPhone ? primaryPhone.slice(0, 20) : null;
 
-    if (cfg.table === 'listings') {
-      let desc = payload.description || '';
-      desc = desc.replace(/(?:\n|^)(?:Alt(?:\s*Phones?|\s*Numbers?)?|Additional\s*Phones?|Phone\s*2|Ph\s*2):\s*[^\n]+/gi, '').trim();
-      if (cleanExtra.length > 0) {
-        const altText = `Alt Phones: ${cleanExtra.join(', ')}`;
-        desc = desc ? `${desc}\n${altText}` : altText;
+      if (cfg.table === 'listings') {
+        let desc = payload.description || '';
+        desc = desc.replace(/(?:\n|^)(?:Alt(?:\s*Phones?|\s*Numbers?)?|Additional\s*Phones?|Phone\s*2|Ph\s*2):\s*[^\n]+/gi, '').trim();
+        if (cleanExtra.length > 0) {
+          const altText = `Alt Phones: ${cleanExtra.join(', ')}`;
+          desc = desc ? `${desc}\n${altText}` : altText;
+        }
+        payload.description = desc ? desc.slice(0, 600) : null;
+      } else if (cfg.table === 'donors') {
+        let areaStr = payload.area || '';
+        areaStr = areaStr.replace(/(?:·|\s)*Alt:\s*[+0-9\s,-]+/gi, '').trim();
+        if (cleanExtra.length > 0) {
+          const altText = `Alt: ${cleanExtra.join(', ')}`;
+          areaStr = areaStr ? `${areaStr} · ${altText}` : altText;
+        }
+        payload.area = areaStr ? areaStr.slice(0, 80) : null;
       }
-      payload.description = desc ? desc.slice(0, 600) : null;
-    } else if (cfg.table === 'donors') {
-      let areaStr = payload.area || '';
-      areaStr = areaStr.replace(/(?:·|\s)*Alt:\s*[+0-9\s,-]+/gi, '').trim();
-      if (cleanExtra.length > 0) {
-        const altText = `Alt: ${cleanExtra.join(', ')}`;
-        areaStr = areaStr ? `${areaStr} · ${altText}` : altText;
-      }
-      payload.area = areaStr ? areaStr.slice(0, 80) : null;
+    } else {
+      delete payload.phone;
     }
 
-    let effectiveStatus = status;
-    if (cfg.table === 'listings' && status === 'hidden') {
-      effectiveStatus = 'archived';
-    }
-    payload.status = effectiveStatus;
+    // Status: strictly 'approved' or 'hidden' to satisfy schema check constraints
+    payload.status = status === 'hidden' ? 'hidden' : 'approved';
+
+    // Announcements specific processing
     if (cfg.table === 'announcements') {
-      const isPinned = Boolean(payload.pinned);
+      const isPinned = Boolean(values?.pinned ?? payload.pinned);
       payload.is_pinned = isPinned;
       delete payload.pinned;
       let bodyText = cleanAnnouncementBody(payload.body || '');
@@ -189,6 +220,29 @@ export default function AdminEdit() {
         bodyText = `[PINNED]\n${bodyText}`;
       }
       payload.body = (bodyText || payload.title || 'Details').slice(0, 1500);
+    }
+
+    // Donors specific constraints
+    if (cfg.table === 'donors') {
+      payload.consent = Boolean(payload.consent ?? true);
+      payload.available = Boolean(payload.available ?? true);
+    }
+
+    // Victory Club specific constraints
+    if (cfg.table === 'victory_members') {
+      payload.display_order = Number(payload.display_order) || 1;
+      if (payload.wing !== 'portfolios') {
+        payload.portfolio = null;
+      }
+      let cleanLink = payload.link?.trim() || '';
+      if (cleanLink) {
+        if (cleanLink.startsWith('@')) {
+          cleanLink = `https://instagram.com/${cleanLink.slice(1)}`;
+        } else if (!cleanLink.startsWith('http://') && !cleanLink.startsWith('https://')) {
+          cleanLink = `https://${cleanLink}`;
+        }
+      }
+      payload.link = cleanLink ? cleanLink.slice(0, 300) : 'https://www.instagram.com/victory_pailippuram';
     }
 
     const isValidUuid = (val) =>
@@ -199,6 +253,7 @@ export default function AdminEdit() {
       payload.updated_by = user.id;
     }
     if (cfg.verify && verify) payload.verified_at = new Date().toISOString();
+    payload.updated_at = new Date().toISOString();
 
     setBusy(true);
     let rowId = id;
@@ -216,21 +271,49 @@ export default function AdminEdit() {
           res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
         }
 
-        // 2. phone_check length constraint
+        // 2. photo_url column missing on unmigrated remote database
+        if (res.error && res.error.message && res.error.message.includes('photo_url')) {
+          const { photo_url, ...noPhoto } = insertPayload;
+          insertPayload = noPhoto;
+          res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
+        }
+
+        // 3. is_pinned column missing on unmigrated remote announcements table
+        if (res.error && res.error.message && res.error.message.includes('is_pinned')) {
+          const { is_pinned, ...noPinnedCol } = insertPayload;
+          insertPayload = noPinnedCol;
+          res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
+        }
+
+        // 4. direction column missing on unmigrated remote bus_routes table
+        if (res.error && res.error.message && res.error.message.includes('direction')) {
+          const { direction, ...noDir } = insertPayload;
+          insertPayload = noDir;
+          res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
+        }
+
+        // 5. phone_check length constraint
         if (res.error && res.error.message && res.error.message.includes('phone_check')) {
           const safePhone = (insertPayload.phone || '').slice(0, 15) || null;
           insertPayload = { ...insertPayload, phone: safePhone };
           res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
         }
 
-        // 3. status_check constraint
+        // 6. status_check constraint
         if (res.error && res.error.message && res.error.message.includes('status_check')) {
           const altStatus = insertPayload.status === 'hidden' ? 'archived' : 'hidden';
           insertPayload = { ...insertPayload, status: altStatus };
           res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
         }
 
-        // 4. listings_kind_check constraint (remote database only allows specific kinds)
+        // 7. category foreign key error
+        if (res.error && res.error.message && (res.error.message.includes('category') || res.error.message.includes('foreign key'))) {
+          const { category_id, ...noCat } = insertPayload;
+          insertPayload = noCat;
+          res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
+        }
+
+        // 8. listings_kind_check constraint (remote database only allows specific kinds)
         if (cfg.table === 'listings' && res.error && res.error.message && (res.error.message.includes('listings_kind_check') || res.error.message.includes('kind_check'))) {
           const intendedKind = cfg.match?.kind;
           let safeDesc = insertPayload.description || '';
@@ -261,33 +344,61 @@ export default function AdminEdit() {
           }
         }
 
-        // 5. category foreign key error
-        if (res.error && res.error.message && (res.error.message.includes('category') || res.error.message.includes('foreign key'))) {
-          const { category_id, ...noCat } = insertPayload;
-          res = await supabase.from(cfg.table).insert(noCat).select('id').single();
-        }
-
         return { error: res.error, rowId: res.data?.id };
       } else {
         let updatePayload = { ...data };
         let res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
 
+        // 1. updated_by column missing or RLS/UUID syntax issue
         if (res.error && res.error.message && (res.error.message.includes('updated_by') || res.error.message.includes('uuid'))) {
           const { updated_by, ...cleaned } = updatePayload;
           updatePayload = cleaned;
           res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
         }
+
+        // 2. photo_url column missing on unmigrated remote database
+        if (res.error && res.error.message && res.error.message.includes('photo_url')) {
+          const { photo_url, ...noPhoto } = updatePayload;
+          updatePayload = noPhoto;
+          res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
+        }
+
+        // 3. is_pinned column missing on unmigrated remote announcements table
+        if (res.error && res.error.message && res.error.message.includes('is_pinned')) {
+          const { is_pinned, ...noPinnedCol } = updatePayload;
+          updatePayload = noPinnedCol;
+          res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
+        }
+
+        // 4. direction column missing on unmigrated remote bus_routes table
+        if (res.error && res.error.message && res.error.message.includes('direction')) {
+          const { direction, ...noDir } = updatePayload;
+          updatePayload = noDir;
+          res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
+        }
+
+        // 5. phone_check length constraint
         if (res.error && res.error.message && res.error.message.includes('phone_check')) {
           const safePhone = (updatePayload.phone || '').slice(0, 15) || null;
           updatePayload = { ...updatePayload, phone: safePhone };
           res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
         }
+
+        // 6. status_check constraint
         if (res.error && res.error.message && res.error.message.includes('status_check')) {
           const altStatus = updatePayload.status === 'hidden' ? 'archived' : 'hidden';
           updatePayload = { ...updatePayload, status: altStatus };
           res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
         }
 
+        // 7. category foreign key error on update
+        if (res.error && res.error.message && (res.error.message.includes('category') || res.error.message.includes('foreign key'))) {
+          const { category_id, ...noCat } = updatePayload;
+          updatePayload = noCat;
+          res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
+        }
+
+        // 8. listings_kind_check constraint on update
         if (cfg.table === 'listings' && res.error && res.error.message && (res.error.message.includes('listings_kind_check') || res.error.message.includes('kind_check'))) {
           const intendedKind = cfg.match?.kind;
           let safeDesc = updatePayload.description || '';
@@ -305,6 +416,10 @@ export default function AdminEdit() {
             if (candRes.error && (candRes.error.message.includes('updated_by') || candRes.error.message.includes('uuid'))) {
               const { updated_by, ...noUser } = tryPayload;
               tryPayload = noUser;
+              candRes = await supabase.from(cfg.table).update(tryPayload).eq('id', id);
+            }
+            if (candRes.error && (candRes.error.message.includes('category') || candRes.error.message.includes('foreign key'))) {
+              tryPayload = { ...tryPayload, category_id: null };
               candRes = await supabase.from(cfg.table).update(tryPayload).eq('id', id);
             }
             if (!candRes.error) {
@@ -421,8 +536,12 @@ export default function AdminEdit() {
                   </select>
                 ) : f.type === 'category' ? (
                   <select id={fid} value={values[f.name] ?? ''} onChange={set(f.name)}>
-                    <option value="">None</option>
-                    {cats.rows.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    <option value="">None / വിഭാഗം തിരഞ്ഞെടുക്കുക</option>
+                    {cats.rows.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} {c.name_ml ? `(${c.name_ml})` : ''}
+                      </option>
+                    ))}
                   </select>
                 ) : (
                   <input id={fid} type={f.type} value={values[f.name] || ''} onChange={set(f.name)} />

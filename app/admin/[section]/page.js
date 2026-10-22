@@ -63,11 +63,11 @@ export default function AdminList() {
   async function toggleHidden(row) {
     setActionError('');
     const isCurrentlyLive = row.status === 'approved';
-    const nextStatus = isCurrentlyLive ? (cfg.table === 'listings' ? 'archived' : 'hidden') : 'approved';
-    let { error: err } = await supabase.from(cfg.table).update({ status: nextStatus }).eq('id', row.id);
+    const nextStatus = isCurrentlyLive ? 'hidden' : 'approved';
+    let { error: err } = await supabase.from(cfg.table).update({ status: nextStatus, updated_at: new Date().toISOString() }).eq('id', row.id);
     if (err && err.message && err.message.includes('status_check')) {
       const altStatus = nextStatus === 'hidden' ? 'archived' : 'hidden';
-      const altRes = await supabase.from(cfg.table).update({ status: altStatus }).eq('id', row.id);
+      const altRes = await supabase.from(cfg.table).update({ status: altStatus, updated_at: new Date().toISOString() }).eq('id', row.id);
       err = altRes.error;
     }
     if (err) return setActionError(err.message || 'Could not save. Please try again.');
@@ -89,7 +89,7 @@ export default function AdminList() {
     } else {
       newBody = `[PINNED]\n${newBody.replace(/^(?:\[PINNED\]\s*)+/i, '').trim()}`;
     }
-    const { error: err } = await supabase.from('announcements').update({ body: newBody, updated_at: new Date().toISOString() }).eq('id', row.id);
+    const { error: err } = await supabase.from('announcements').update({ body: newBody, is_pinned: !currentlyPinned, updated_at: new Date().toISOString() }).eq('id', row.id);
     if (err) return setActionError(err.message || 'Could not update pin status.');
     await logAudit(user, { action: currentlyPinned ? 'unpin announcement' : 'pin announcement', table: 'announcements', rowId: row.id, note: row.title });
     showToast({
@@ -156,11 +156,9 @@ export default function AdminList() {
       </PageHeader>
       <main className="body">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {section !== 'bus' && (
-            <Link className="btn dark big" href={`/admin/${section}/new`} style={{ flex: 1, minWidth: 180 }}>
-              + Add new {cfg.singular}
-            </Link>
-          )}
+          <Link className="btn dark big" href={`/admin/${section}/new`} style={{ flex: 1, minWidth: 180 }}>
+            + Add new {cfg.singular}
+          </Link>
           {['shops', 'workers', 'transport', 'contacts'].includes(section) && (
             <Link
               className="btn light"

@@ -139,26 +139,44 @@ export default function AdminVictoryPage() {
 
     setSaving(true);
     try {
-      const payload = {
-        name: formData.name.trim(),
+      let cleanLink = formData.link?.trim() || '';
+      if (cleanLink) {
+        if (cleanLink.startsWith('@')) {
+          cleanLink = `https://instagram.com/${cleanLink.slice(1)}`;
+        } else if (!cleanLink.startsWith('http://') && !cleanLink.startsWith('https://')) {
+          cleanLink = `https://${cleanLink}`;
+        }
+      } else {
+        cleanLink = DEFAULT_LINK;
+      }
+
+      let payload = {
+        name: formData.name.trim().slice(0, 120),
         photo_url: formData.photo_url?.trim() || null,
-        role: formData.role.trim(),
-        role_ml: formData.role_ml?.trim() || null,
+        role: formData.role.trim().slice(0, 120),
+        role_ml: formData.role_ml?.trim() ? formData.role_ml.trim().slice(0, 120) : null,
         wing: formData.wing,
-        portfolio: formData.wing === 'portfolios' ? formData.portfolio?.trim() || null : null,
-        link: formData.link?.trim() || DEFAULT_LINK,
-        phone: formData.phone?.trim() || null,
-        display_order: Number(formData.display_order) || 1,
-        status: formData.status,
+        portfolio: formData.wing === 'portfolios' ? (formData.portfolio?.trim() || null) : null,
+        link: cleanLink.slice(0, 300),
+        phone: formData.phone?.trim() ? formData.phone.trim().slice(0, 20) : null,
+        display_order: Number(formData.display_order) >= 1 ? Number(formData.display_order) : 1,
+        status: formData.status === 'hidden' ? 'hidden' : 'approved',
         updated_at: new Date().toISOString(),
       };
 
       if (editingMember === 'new') {
-        const { data, error: insertErr } = await supabase
+        let { data, error: insertErr } = await supabase
           .from('victory_members')
           .insert(payload)
           .select('id')
           .single();
+
+        if (insertErr && insertErr.message && insertErr.message.includes('photo_url')) {
+          const { photo_url, ...noPhoto } = payload;
+          const retryRes = await supabase.from('victory_members').insert(noPhoto).select('id').single();
+          data = retryRes.data;
+          insertErr = retryRes.error;
+        }
 
         if (insertErr) throw insertErr;
 
@@ -176,10 +194,16 @@ export default function AdminVictoryPage() {
           sub: `${payload.name} (${payload.role})`,
         });
       } else {
-        const { error: updateErr } = await supabase
+        let { error: updateErr } = await supabase
           .from('victory_members')
           .update(payload)
           .eq('id', editingMember.id);
+
+        if (updateErr && updateErr.message && updateErr.message.includes('photo_url')) {
+          const { photo_url, ...noPhoto } = payload;
+          const retryRes = await supabase.from('victory_members').update(noPhoto).eq('id', editingMember.id);
+          updateErr = retryRes.error;
+        }
 
         if (updateErr) throw updateErr;
 
@@ -735,8 +759,8 @@ export default function AdminVictoryPage() {
                 </label>
                 <input
                   id="m-link"
-                  type="url"
-                  placeholder="https://www.instagram.com/victory_pailippuram"
+                  type="text"
+                  placeholder="https://www.instagram.com/victory_pailippuram or @handle"
                   value={formData.link}
                   onChange={(e) => setFormData((prev) => ({ ...prev, link: e.target.value }))}
                 />
