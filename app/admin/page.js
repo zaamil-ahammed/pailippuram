@@ -8,7 +8,6 @@ import { adminMutate } from '../../lib/adminApi';
 import { logAudit } from '../../lib/audit';
 import { useRows } from '../../lib/useRows';
 import { OUTDATED_DAYS, SECTIONS, SECTION_KEYS, SUBMISSION_LABEL, SUBMISSION_SECTION, getSubmissionSection, getSubmissionLabel } from '../../lib/sections';
-import { showToast } from '../../lib/toast';
 
 function outdatedCutoff() {
   return new Date(Date.now() - OUTDATED_DAYS * 86400000).toISOString();
@@ -44,9 +43,6 @@ export default function AdminHome() {
           } else if (key === 'shops') {
             all = all.or('kind.eq.business,kind.eq.shop');
             old = old.or('kind.eq.business,kind.eq.shop');
-          } else if (key === 'schools') {
-            all = all.or('description.ilike.%[EDUCATION]%,description.ilike.%[SCHOOL]%,description.ilike.%[MADRASSA]%,category_id.eq.aefbe578-e693-4d17-b1b9-3fcbaa58ae19,category_id.eq.690aa10e-e82e-4393-b0a8-f1b814aa322f,title.ilike.%school%,title.ilike.%madrassa%,title.ilike.%madrasa%,title.ilike.%anganwadi%');
-            old = old.or('description.ilike.%[EDUCATION]%,description.ilike.%[SCHOOL]%,description.ilike.%[MADRASSA]%,category_id.eq.aefbe578-e693-4d17-b1b9-3fcbaa58ae19,category_id.eq.690aa10e-e82e-4393-b0a8-f1b814aa322f,title.ilike.%school%,title.ilike.%madrassa%,title.ilike.%madrasa%,title.ilike.%anganwadi%');
           } else {
             for (const [k, v] of Object.entries(cfg.match || {})) {
               all = all.eq(k, v);
@@ -81,11 +77,6 @@ export default function AdminHome() {
     });
     if (error) return setActionError(error.message || 'Could not save. Please try again.');
     await logAudit(user, { action, table: 'submissions', rowId: row.id, note: row.title });
-    showToast({
-      type: status === 'rejected' ? 'info' : 'success',
-      message: status === 'rejected' ? 'Submission rejected' : 'Submission marked approved',
-      sub: row.title,
-    });
     queue.reload();
   }
 
@@ -177,33 +168,6 @@ export default function AdminHome() {
           ))}
         </div>
 
-        <Link
-          href="/admin/categories"
-          className="card"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '14px 18px',
-            background: 'var(--accent-tint)',
-            border: '1.5px solid var(--accent-border)',
-            borderRadius: 16,
-            marginTop: 12,
-            textDecoration: 'none',
-          }}
-        >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 18 }}>🏷️</span>
-              <strong style={{ fontSize: 15, color: 'var(--ink)' }}>Categories Manager · വിഭാഗങ്ങൾ</strong>
-            </div>
-            <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--muted)' }}>
-              Add custom categories, view entry counts & manage visibility on user panel
-            </p>
-          </div>
-          <span style={{ fontSize: 18, color: 'var(--gold-dark)', fontWeight: 800 }}>→</span>
-        </Link>
-
         <h2>Needs a fresh check</h2>
         <div className="note">
           <strong>{outdated} items not verified in {OUTDATED_DAYS} days</strong>
@@ -212,7 +176,7 @@ export default function AdminHome() {
 
         <h2>Site tools</h2>
         <div className="stack">
-          <Link className="linkrow" href="/admin/categories"><span>🏷️ Manage categories & subcategories</span><span aria-hidden="true">&#8250;</span></Link>
+          <Link className="linkrow" href="/admin/categories"><span>🏷️ Custom categories: add, edit and delete</span><span aria-hidden="true">&#8250;</span></Link>
           <Link className="linkrow" href="/admin/log"><span>Activity log: who changed what</span><span aria-hidden="true">&#8250;</span></Link>
           <Link className="linkrow" href="/admin/admins"><span>Admins and roles</span><span aria-hidden="true">&#8250;</span></Link>
           <Link className="linkrow" href="/admin/backup"><span>Export a backup</span><span aria-hidden="true">&#8250;</span></Link>

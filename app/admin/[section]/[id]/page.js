@@ -30,6 +30,13 @@ export default function AdminEdit() {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // Admin custom category creation state
+  const [showAddCat, setShowAddCat] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatNameMl, setNewCatNameMl] = useState('');
+  const [savingCat, setSavingCat] = useState(false);
+  const [catError, setCatError] = useState('');
+
   const cats = useRows(
     (s) => {
       let q = s.from('categories').select('*').order('name');
@@ -43,6 +50,55 @@ export default function AdminEdit() {
     },
     [section]
   );
+
+  async function handleCreateCategory(fName) {
+    if (!newCatName.trim()) {
+      setCatError('Please enter a category name');
+      return;
+    }
+    setSavingCat(true);
+    setCatError('');
+    try {
+      let catKind = cfg?.match?.kind || 'business';
+      if (section === 'schools') catKind = 'contact';
+      if (section === 'shops') catKind = 'business';
+
+      const res = await adminMutate({
+        action: 'insert',
+        table: 'categories',
+        data: {
+          name: newCatName.trim(),
+          name_ml: newCatNameMl.trim() || null,
+          kind: catKind,
+        },
+      });
+
+      if (res.error) {
+        setCatError(res.error.message || 'Could not save category');
+        setSavingCat(false);
+        return;
+      }
+
+      const createdId = res.data?.id;
+      showToast({
+        type: 'success',
+        message: 'Category added!',
+        sub: `${newCatName.trim()} added to ${cfg.label}`,
+      });
+
+      await cats.reload();
+      if (createdId) {
+        setValues((v) => ({ ...v, [fName]: createdId }));
+      }
+      setNewCatName('');
+      setNewCatNameMl('');
+      setShowAddCat(false);
+    } catch (err) {
+      setCatError(err?.message || 'Error creating category');
+    } finally {
+      setSavingCat(false);
+    }
+  }
 
   useEffect(() => {
     if (!cfg) return;
@@ -383,14 +439,102 @@ export default function AdminEdit() {
                     {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 ) : f.type === 'category' ? (
-                  <select id={fid} value={values[f.name] ?? ''} onChange={set(f.name)}>
-                    <option value="">None / വിഭാഗം തിരഞ്ഞെടുക്കുക</option>
-                    {cats.rows.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} {c.name_ml ? `(${c.name_ml})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <select id={fid} value={values[f.name] ?? ''} onChange={set(f.name)} style={{ flex: 1 }}>
+                        <option value="">None / വിഭാഗം തിരഞ്ഞെടുക്കുക</option>
+                        {cats.rows.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} {c.name_ml ? `(${c.name_ml})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="btn light"
+                        onClick={() => {
+                          setShowAddCat(!showAddCat);
+                          setCatError('');
+                        }}
+                        style={{
+                          whiteSpace: 'nowrap',
+                          fontSize: 13,
+                          minHeight: 42,
+                          padding: '0 12px',
+                          fontWeight: 700,
+                        }}
+                        title="Admins can create a custom category"
+                      >
+                        {showAddCat ? '✕ Close' : '+ Add custom category'}
+                      </button>
+                    </div>
+
+                    {showAddCat && (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          padding: 14,
+                          background: 'var(--card-subtle, #faf8f5)',
+                          border: '1.5px solid var(--accent-border, #d8b368)',
+                          borderRadius: 14,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 10,
+                        }}
+                      >
+                        <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>
+                          🏷️ Add Custom Category for {cfg.label}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
+                          <div>
+                            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>
+                              English Name *
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Hardware & Tools"
+                              value={newCatName}
+                              onChange={(e) => setNewCatName(e.target.value)}
+                              style={{ width: '100%' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>
+                              Malayalam Name (optional)
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="e.g. ഹാർഡ്‌വെയർ"
+                              value={newCatNameMl}
+                              onChange={(e) => setNewCatNameMl(e.target.value)}
+                              style={{ width: '100%' }}
+                            />
+                          </div>
+                        </div>
+                        {catError && <p className="error" style={{ margin: 0, fontSize: 13 }}>{catError}</p>}
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+                          <button
+                            type="button"
+                            className="btn"
+                            onClick={() => {
+                              setShowAddCat(false);
+                              setCatError('');
+                            }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            className="btn dark"
+                            disabled={savingCat}
+                            onClick={() => handleCreateCategory(f.name)}
+                          >
+                            {savingCat ? 'Saving...' : 'Save & Select Category'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <input id={fid} type={f.type} value={values[f.name] || ''} onChange={set(f.name)} />
                 )}

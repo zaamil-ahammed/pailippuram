@@ -15,7 +15,7 @@ alter table if exists bus_routes add column if not exists direction text;
 alter table if exists listings drop constraint if exists listings_kind_check;
 alter table if exists listings add constraint listings_kind_check check (kind in ('contact', 'business', 'shop', 'worker', 'transport'));
 alter table if exists categories drop constraint if exists categories_kind_check;
-alter table if exists categories add constraint categories_kind_check check (kind in ('contact', 'business', 'shop', 'worker', 'transport', 'education', 'school', 'panchayath', 'announcement', 'donor', 'bus', 'victory'));
+alter table if exists categories add constraint categories_kind_check check (kind in ('contact', 'business', 'shop', 'worker', 'transport'));
 
 notify pgrst, 'reload schema';
 
@@ -23,7 +23,7 @@ notify pgrst, 'reload schema';
 
 create table if not exists categories (
   id serial primary key,
-  kind text not null check (kind in ('contact', 'business', 'shop', 'worker', 'transport', 'education', 'school', 'panchayath', 'announcement', 'donor', 'bus', 'victory')),
+  kind text not null check (kind in ('contact', 'business', 'worker', 'transport')),
   name text not null,
   name_ml text,
   unique (kind, name)
@@ -103,23 +103,6 @@ create table if not exists panchayath_items (
   updated_by uuid
 );
 
-create table if not exists victory_members (
-  id uuid primary key default gen_random_uuid(),
-  name text not null check (char_length(name) between 1 and 120),
-  photo_url text,
-  role text not null check (char_length(role) between 1 and 120),
-  role_ml text,
-  wing text not null check (wing in ('executive', 'portfolios', 'gcc', 'central')),
-  portfolio text,
-  link text check (char_length(link) <= 300),
-  phone text check (char_length(phone) <= 80),
-  display_order int not null default 1,
-  status text not null default 'approved' check (status in ('approved', 'hidden')),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  updated_by uuid
-);
-
 -- What visitors send in. Never shown publicly; admins review it.
 create table if not exists submissions (
   id uuid primary key default gen_random_uuid(),
@@ -177,7 +160,7 @@ create policy "admins manage categories" on categories for all
 do $$
 declare t text;
 begin
-  foreach t in array array['listings','announcements','bus_routes','donors','panchayath_items','victory_members'] loop
+  foreach t in array array['listings','announcements','bus_routes','donors','panchayath_items'] loop
     execute format('alter table %I enable row level security', t);
     execute format('create policy "public reads live rows" on %I for select using (status = ''approved'')', t);
     execute format('create policy "admins read all" on %I for select using (is_admin())', t);

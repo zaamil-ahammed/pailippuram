@@ -119,18 +119,6 @@ const LINKS = [
     ),
   },
   {
-    href: '/schools',
-    label: 'Schools & Madrassas',
-    ml: 'സ്കൂളുകൾ & മദ്രസകൾ',
-    sub: 'Numbers & Roles · നമ്പറുകൾ & ഭാരവാഹികൾ',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-        <path d="M6 12v5c3 3 9 3 12 0v-5" />
-      </svg>
-    ),
-  },
-  {
     href: '/announcements',
     label: 'Announcements',
     ml: 'അറിയിപ്പുകൾ',
@@ -289,12 +277,9 @@ export default function Shell({ children }) {
                   >
                     {l.icon}
                   </span>
-                  <span style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span>
-                      {l.label}
-                      {l.ml ? <span className="muted"> · {l.ml}</span> : null}
-                    </span>
-                    {l.sub ? <span style={{ fontSize: 11.5, color: 'var(--gold-dark)', fontWeight: 600 }}>{l.sub}</span> : null}
+                  <span>
+                    {l.label}
+                    {l.ml ? <span className="muted"> · {l.ml}</span> : null}
                   </span>
                 </span>
                 <span aria-hidden="true" style={{ color: 'var(--muted)', fontSize: 18 }}>&#8250;</span>

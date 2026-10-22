@@ -3,9 +3,9 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import PageHeader from '../../components/PageHeader';
-import MultiPhoneInput from '../../components/MultiPhoneInput';
 import { sendSubmission } from '../../lib/submit';
 import { BLOOD_GROUPS } from '../../lib/sections';
+import { useIsAdmin } from '../../lib/useAdmin';
 
 const MENUS = [
   {
@@ -130,29 +130,6 @@ const MENUS = [
     areaPlaceholder: 'Location or landmark',
   },
   {
-    type: 'school',
-    label: 'School / Madrassa',
-    ml: 'സ്കൂൾ / മദ്രസ',
-    icon: '🏫',
-    backHref: '/schools',
-    backLabel: 'Schools & Madrassas',
-    desc: 'Submit school, madrassa, or educational institution details with HM, Sadar Ustad, PTA, and office roles & contact numbers.',
-    chipsTitle: 'Institution Type / സ്ഥാപന വിഭാഗം',
-    chips: [
-      { id: 'Govt LP / UP School · സർക്കാർ സ്കൂൾ', label: '🏫 Govt LP / UP School' },
-      { id: 'High School / HSS · ഹൈസ്കൂൾ / ഹയർ സെക്കൻഡറി', label: '🎓 High School / HSS' },
-      { id: 'English Medium School · ഇംഗ്ലീഷ് മീഡിയം', label: '📚 English Medium School' },
-      { id: 'Madrassa & Dars · മദ്രസ / ദർസ്', label: '📖 Madrassa & Dars' },
-      { id: 'Islamic / Arabic College · അറബിക് കോളേജ്', label: '🕌 Islamic / Arabic College' },
-      { id: 'Anganwadi · അങ്കണവാടി', label: '🎒 Anganwadi / Pre-Primary' },
-      { id: 'Other Institution · മറ്റ് സ്ഥാപനങ്ങൾ', label: '🏛️ Other Institution' },
-    ],
-    nameLabel: 'Institution Name / സ്ഥാപനത്തിന്റെ പേര്',
-    namePlaceholder: 'e.g. GLPS Pailippuram, Hidayathul Muslimeen Madrassa',
-    areaLabel: 'Location / Area in Pailippuram / സ്ഥലം',
-    areaPlaceholder: 'e.g. School Padi, Thiruvegappura, Valiyakunnu',
-  },
-  {
     type: 'announcement',
     label: 'Announcement',
     ml: 'അറിയിപ്പുകൾ',
@@ -196,22 +173,50 @@ const MENUS = [
 ];
 
 function ShareFormInner() {
+  const { isAdmin } = useIsAdmin();
   const searchParams = useSearchParams();
   const initialType = searchParams.get('type') || 'transport';
 
+  // For normal users, hide the custom / unclassified 'other' category
+  const availableMenus = useMemo(() => {
+    if (isAdmin) return MENUS;
+    return MENUS.filter((m) => m.type !== 'other');
+  }, [isAdmin]);
+
   const [type, setType] = useState(() => {
-    return MENUS.some((m) => m.type === initialType) ? initialType : 'transport';
+    const valid = availableMenus.some((m) => m.type === initialType);
+    return valid ? initialType : 'transport';
   });
 
   // Listen to searchParams change if user navigates back/forward
   useEffect(() => {
     const qType = searchParams.get('type');
-    if (qType && MENUS.some((m) => m.type === qType)) {
+    if (qType && availableMenus.some((m) => m.type === qType)) {
       setType(qType);
+    } else if (qType === 'other' && !isAdmin) {
+      setType('transport');
     }
-  }, [searchParams]);
+  }, [searchParams, availableMenus, isAdmin]);
 
-  const activeMenu = MENUS.find((m) => m.type === type) || MENUS[0];
+  // Ensure normal users never remain on 'other' category
+  useEffect(() => {
+    if (!isAdmin && type === 'other') {
+      setType('transport');
+    }
+  }, [isAdmin, type]);
+
+  const activeMenu = availableMenus.find((m) => m.type === type) || availableMenus[0] || MENUS[0];
+
+  // For normal users, hide unclassified "Other ..." category chips
+  const activeChips = useMemo(() => {
+    if (!activeMenu.chips) return [];
+    if (isAdmin) return activeMenu.chips;
+    return activeMenu.chips.filter((c) => {
+      const id = (c.id || '').toLowerCase();
+      const label = (c.label || '').toLowerCase();
+      return !id.startsWith('other') && !label.startsWith('other') && !id.includes('other ') && !label.includes('other ');
+    });
+  }, [activeMenu, isAdmin]);
 
   // Specific form states
   const [selectedChip, setSelectedChip] = useState('');
@@ -222,38 +227,28 @@ function ShareFormInner() {
   const [area, setArea] = useState('');
   const [details, setDetails] = useState('');
 
-  // Transport specific
-  const [vehicleModel, setVehicleModel] = useState('');
-  const [is24Hours, setIs24Hours] = useState(false);
+  const addPhone = () => {
+    if (additionalPhones.length < 3) {
+      setAdditionalPhones((prev) => [...prev, '']);
+    }
+  };
 
-  // Shop specific
-  const [workingHours, setWorkingHours] = useState('');
-  const [hasHomeDelivery, setHasHomeDelivery] = useState(false);
+  const updatePhone = (index, val) => {
+    setAdditionalPhones((prev) => {
+      const copy = [...prev];
+      copy[index] = val;
+      return copy;
+    });
+  };
 
-  // Worker specific
-  const [experience, setExperience] = useState('');
+  const removePhone = (index) => {
+    setAdditionalPhones((prev) => prev.filter((_, i) => i !== index));
+  };
 
-  // Donor specific
+  // Lightweight optional note & category extras
+  const [note, setNote] = useState('');
   const [bloodGroup, setBloodGroup] = useState('O+');
-  const [age, setAge] = useState('');
-  const [emergencyReady, setEmergencyReady] = useState(true);
-
-  // Announcement specific
   const [eventDate, setEventDate] = useState('');
-  const [organizedBy, setOrganizedBy] = useState('');
-
-  // School & Madrassa specific roles
-  const [headRole, setHeadRole] = useState('Headmaster (HM)');
-  const [headName, setHeadName] = useState('');
-  const [headPhone, setHeadPhone] = useState('');
-  const [ptaName, setPtaName] = useState('');
-  const [ptaPhone, setPtaPhone] = useState('');
-  const [busPhone, setBusPhone] = useState('');
-
-  // Custom Category states for user panel
-  const [customCatName, setCustomCatName] = useState('');
-  const [customCatMl, setCustomCatMl] = useState('');
-  const [dbCategories, setDbCategories] = useState([]);
 
   // Common submitter metadata
   const [submitterContact, setSubmitterContact] = useState('');
@@ -264,90 +259,19 @@ function ShareFormInner() {
   const [errorMsg, setErrorMsg] = useState('');
   const [done, setDone] = useState(false);
 
-  // Fetch registered DB categories for the active kind
+  // Reset or initialize default chip when type or activeChips change
   useEffect(() => {
-    if (type === 'donor' || type === 'announcement' || type === 'other') {
-      setDbCategories([]);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const queryKind = type === 'school' ? 'contact' : type;
-        const res = await fetch(`/api/categories?kind=${encodeURIComponent(queryKind)}`);
-        const data = await res.json();
-        if (!cancelled && data.categories) {
-          setDbCategories(data.categories);
-        }
-      } catch {
-        // keep presets
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [type]);
-
-  // Combine static presets with live database categories (and "+ Custom Category" option)
-  const displayedChips = useMemo(() => {
-    if (type === 'donor') return activeMenu.chips || [];
-    const presetChips = activeMenu.chips || [];
-    const seen = new Set(presetChips.map((c) => c.id.toLowerCase()));
-
-    const extra = [];
-    dbCategories.forEach((c) => {
-      const key = (c.name || '').toLowerCase();
-      if (!seen.has(key)) {
-        seen.add(key);
-        extra.push({
-          id: c.name,
-          catId: c.id,
-          label: c.name_ml ? `${c.name} · ${c.name_ml}` : c.name,
-        });
-      }
-    });
-
-    const combined = [...presetChips, ...extra];
-    if (['transport', 'business', 'worker', 'contact', 'school'].includes(type)) {
-      combined.push({
-        id: '__custom__',
-        label: '✨ + Custom Category · മറ്റ് പുതിയ വിഭാഗം',
-        isCustomTrigger: true,
-      });
-    }
-    return combined;
-  }, [activeMenu, dbCategories, type]);
-
-  // Reset or initialize default chip when type, displayedChips, or searchParams change
-  useEffect(() => {
-    const qCat = searchParams ? searchParams.get('cat') : null;
-    const isCustom = searchParams ? searchParams.get('custom') : null;
-
-    if (qCat) {
-      const match = displayedChips.find(
-        (c) =>
-          c.id.toLowerCase() === qCat.toLowerCase() ||
-          (c.label && c.label.toLowerCase().includes(qCat.toLowerCase()))
-      );
-      if (match) {
-        setSelectedChip(match.id);
-      } else {
-        setSelectedChip('__custom__');
-        setCustomCatName(qCat);
-      }
-    } else if (isCustom === '1') {
-      setSelectedChip('__custom__');
-    } else if (displayedChips && displayedChips.length > 0) {
+    if (activeChips && activeChips.length > 0) {
       if (type === 'donor') {
         setBloodGroup('O+');
         setSelectedChip('O+');
       } else {
-        setSelectedChip(displayedChips[0].id);
+        setSelectedChip(activeChips[0].id);
       }
     } else {
       setSelectedChip('');
     }
-  }, [type, displayedChips, searchParams]);
+  }, [type, activeChips]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -371,124 +295,20 @@ function ShareFormInner() {
 
     setBusy(true);
 
-    let categoryIdToTag = null;
-    let effectiveCategoryLabel = selectedChip;
-
-    if (selectedChip === '__custom__') {
-      if (!customCatName.trim() || customCatName.trim().length < 2) {
-        setErrorMsg('Please enter your custom category name (at least 2 characters).');
-        setBusy(false);
-        return;
-      }
-      effectiveCategoryLabel = customCatName.trim();
-      try {
-        const catRes = await fetch('/api/categories', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            kind: type === 'business' ? 'business' : type,
-            name: customCatName.trim(),
-            name_ml: customCatMl.trim() || undefined,
-          }),
-        });
-        const catData = await catRes.json();
-        if (catData && catData.category && catData.category.id) {
-          categoryIdToTag = catData.category.id;
-        }
-      } catch {
-        // proceed with label
-      }
-    } else {
-      const matchedDb = dbCategories.find(
-        (c) =>
-          c.name.toLowerCase() === (selectedChip || '').toLowerCase() ||
-          (c.id && String(c.id) === String(selectedChip))
-      );
-      if (matchedDb) {
-        categoryIdToTag = matchedDb.id;
-      }
-    }
-
-    // Compile customized structured description tailored to each menu
-    let structuredDesc = '';
     let finalTitle = name.trim();
-
-    if (type === 'transport') {
-      const parts = [
-        `Vehicle Type: ${effectiveCategoryLabel || 'Transport'}`,
-        vehicleModel.trim() && `Vehicle Model / No: ${vehicleModel.trim()}`,
-        is24Hours && `Service Availability: 24 Hours / 24 മണിക്കൂറും ലഭ്യമാണ്`,
-        whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
-        details.trim() && `Details: ${details.trim()}`,
-      ].filter(Boolean);
-      structuredDesc = parts.join('\n');
-    } else if (type === 'business') {
-      const parts = [
-        `Category: ${effectiveCategoryLabel || 'Shop'}`,
-        workingHours.trim() && `Hours: ${workingHours.trim()}`,
-        hasHomeDelivery && `Home Delivery: Available / ഹോം ഡെലിവറി ഉണ്ട്`,
-        whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
-        details.trim() && `About Shop / Products: ${details.trim()}`,
-      ].filter(Boolean);
-      structuredDesc = parts.join('\n');
-    } else if (type === 'worker') {
-      const parts = [
-        `Trade / Skill: ${effectiveCategoryLabel || 'Worker'}`,
-        experience.trim() && `Work details: ${experience.trim()}`,
-        whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
-        details.trim() && `Extra details: ${details.trim()}`,
-      ].filter(Boolean);
-      structuredDesc = parts.join('\n');
-    } else if (type === 'donor') {
+    if (type === 'donor') {
       const group = bloodGroup || selectedChip || 'O+';
       finalTitle = `${name.trim()} (${group})`;
-      const parts = [
-        `Blood Group: ${group}`,
-        age.trim() && `Age: ${age.trim()}`,
-        emergencyReady && `Emergency calls: Ready / അടിയന്തിര ആവശ്യത്തിന് വിളിക്കാം`,
-        details.trim() && `Notes: ${details.trim()}`,
-      ].filter(Boolean);
-      structuredDesc = parts.join('\n');
-    } else if (type === 'contact') {
-      const parts = [
-        `Category: ${effectiveCategoryLabel || 'Contact'}`,
-        whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
-        details.trim() && `Details: ${details.trim()}`,
-      ].filter(Boolean);
-      structuredDesc = parts.join('\n');
-    } else if (type === 'school') {
-      const parts = [
-        `[EDUCATION]`,
-        `Type: ${effectiveCategoryLabel || 'School / Madrassa'}`,
-        workingHours.trim() && `Hours: ${workingHours.trim()}`,
-        `Roles:`,
-        (headName.trim() || headPhone.trim()) && `- ${headRole}: ${headName.trim()} | ${headPhone.trim()}`,
-        phone.trim() && `- Office Desk: ${phone.trim()}`,
-        (ptaName.trim() || ptaPhone.trim()) && `- PTA President / Committee: ${ptaName.trim()} | ${ptaPhone.trim()}`,
-        busPhone.trim() && `- School / Madrasa Bus Driver: ${busPhone.trim()}`,
-        whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
-        details.trim() && `Details: ${details.trim()}`,
-      ].filter(Boolean);
-      structuredDesc = parts.join('\n');
-    } else if (type === 'announcement') {
-      const parts = [
-        `Category: ${effectiveCategoryLabel || 'Notice'}`,
-        eventDate && `Event Date: ${eventDate}`,
-        organizedBy.trim() && `Organized By: ${organizedBy.trim()}`,
-        details.trim() && `Details: ${details.trim()}`,
-      ].filter(Boolean);
-      structuredDesc = parts.join('\n');
-    } else {
-      const parts = [
-        effectiveCategoryLabel && `Subject: ${effectiveCategoryLabel}`,
-        whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
-        details.trim() && `Details: ${details.trim()}`,
-      ].filter(Boolean);
-      structuredDesc = parts.join('\n');
     }
 
-    if (categoryIdToTag) {
-      structuredDesc = `${structuredDesc}\n[CAT_ID:${categoryIdToTag}]`;
+    let structuredDesc = note.trim();
+    if (selectedChip && type !== 'donor') {
+      const chipObj = activeChips.find((c) => c.id === selectedChip);
+      const cleanCat = (chipObj?.label || selectedChip).replace(/^[^\w\s\u0D00-\u0D7F]+/gu, '').trim();
+      structuredDesc = `[Category: ${cleanCat}]\n${structuredDesc}`.trim();
+    }
+    if (type === 'announcement' && eventDate) {
+      structuredDesc = structuredDesc ? `Date: ${eventDate}\n${structuredDesc}` : `Date: ${eventDate}`;
     }
 
     let primaryPhone = phone.trim();
@@ -515,7 +335,7 @@ function ShareFormInner() {
     const resError = await sendSubmission({
       type,
       title: finalTitle,
-      description: structuredDesc.slice(0, 1500) || null,
+      description: structuredDesc ? structuredDesc.slice(0, 500) : null,
       phone: primaryPhone.slice(0, 20) || null,
       area: area.trim() || null,
       submitter_contact: submitterContact.trim() || null,
@@ -574,9 +394,8 @@ function ShareFormInner() {
                 setPhone('');
                 setWhatsapp('');
                 setArea('');
-                setDetails('');
-                setVehicleModel('');
-                setWorkingHours('');
+                setNote('');
+                setEventDate('');
               }}
             >
               + Share another listing · മറ്റൊന്ന് ചേർക്കുക
@@ -610,7 +429,7 @@ function ShareFormInner() {
             </span>
           </div>
           <div className="chips" style={{ gap: 8 }}>
-            {MENUS.map((m) => {
+            {availableMenus.map((m) => {
               const active = type === m.type;
               return (
                 <button
@@ -663,7 +482,7 @@ function ShareFormInner() {
         </div>
 
         {/* 2. Specialized Chips for the active menu */}
-        {activeMenu.chips && activeMenu.chips.length > 0 && (
+        {activeChips && activeChips.length > 0 && (
           <div className="field">
             <label style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{activeMenu.chipsTitle}</label>
 
@@ -698,71 +517,27 @@ function ShareFormInner() {
                 })}
               </div>
             ) : (
-              // Standard & Custom Subcategory Selection Chips
-              <>
-                <div className="chips" style={{ marginTop: 4, gap: 6 }}>
-                  {displayedChips.map((c) => {
-                    const sel = selectedChip === c.id;
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        className={`chip ${sel ? 'on' : ''}`}
-                        onClick={() => setSelectedChip(c.id)}
-                        style={{
-                          fontSize: 13,
-                          padding: '4px 12px',
-                          minHeight: 34,
-                          fontWeight: c.isCustomTrigger ? 800 : undefined,
-                          borderColor: c.isCustomTrigger && sel ? 'var(--accent)' : undefined,
-                        }}
-                      >
-                        {c.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Custom Category Input Block (shown when "+ Custom Category" is chosen) */}
-                {selectedChip === '__custom__' && (
-                  <div
-                    style={{
-                      marginTop: 10,
-                      padding: '14px 16px',
-                      background: 'var(--accent-tint)',
-                      border: '1.5px solid var(--accent-border)',
-                      borderRadius: 14,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 8,
-                    }}
-                  >
-                    <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>
-                      Enter Custom Category Name / പുതിയ വിഭാഗത്തിന്റെ പേര് *
-                    </label>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                      <input
-                        type="text"
-                        placeholder="Category Name in English *"
-                        value={customCatName}
-                        onChange={(e) => setCustomCatName(e.target.value)}
-                        required={selectedChip === '__custom__'}
-                        style={{ minHeight: 40, fontSize: 13 }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Malayalam Name (മലയാളത്തിൽ - optional)"
-                        value={customCatMl}
-                        onChange={(e) => setCustomCatMl(e.target.value)}
-                        style={{ minHeight: 40, fontSize: 13 }}
-                      />
-                    </div>
-                    <p className="small muted" style={{ margin: 0, fontSize: 11.5 }}>
-                      💡 This category will be created and saved. Both you and the admin can see it, and it will automatically appear in the public listings page once your entry is approved.
-                    </p>
-                  </div>
-                )}
-              </>
+              // Standard Subcategory Selection Chips
+              <div className="chips" style={{ marginTop: 4, gap: 6 }}>
+                {activeChips.map((c) => {
+                  const sel = selectedChip === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`chip ${sel ? 'on' : ''}`}
+                      onClick={() => setSelectedChip(c.id)}
+                      style={{
+                        fontSize: 13,
+                        padding: '4px 12px',
+                        minHeight: 34,
+                      }}
+                    >
+                      {c.label}
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}
@@ -781,260 +556,93 @@ function ShareFormInner() {
           />
         </div>
 
-        {/* 4. Menu-Specific Extra Fields */}
-
-        {/* TRANSPORT EXTRAS */}
-        {type === 'transport' && (
-          <>
-            <div className="field">
-              <label htmlFor="veh-model">Vehicle Model or Number / വാഹനം മോഡൽ (optional)</label>
-              <input
-                id="veh-model"
-                type="text"
-                maxLength={60}
-                placeholder="Vehicle model or number"
-                value={vehicleModel}
-                onChange={(e) => setVehicleModel(e.target.value)}
-              />
-            </div>
-            <div className="check" style={{ marginTop: 4 }}>
-              <input
-                id="is-24h"
-                type="checkbox"
-                checked={is24Hours}
-                onChange={(e) => setIs24Hours(e.target.checked)}
-              />
-              <label htmlFor="is-24h" style={{ fontSize: 14 }}>
-                <strong>24 Hours Available / 24 മണിക്കൂറും സർവീസ് ലഭ്യമാണ്</strong> (Night trips, emergency hospital drops)
-              </label>
-            </div>
-          </>
-        )}
-
-        {/* SHOP EXTRAS */}
-        {type === 'business' && (
-          <>
-            <div className="field">
-              <label htmlFor="shop-hours">Opening Hours / പ്രവർത്തന സമയം (optional)</label>
-              <input
-                id="shop-hours"
-                type="text"
-                maxLength={60}
-                placeholder="Working hours"
-                value={workingHours}
-                onChange={(e) => setWorkingHours(e.target.value)}
-              />
-            </div>
-            <div className="check" style={{ marginTop: 4 }}>
-              <input
-                id="shop-delivery"
-                type="checkbox"
-                checked={hasHomeDelivery}
-                onChange={(e) => setHasHomeDelivery(e.target.checked)}
-              />
-              <label htmlFor="shop-delivery" style={{ fontSize: 14 }}>
-                <strong>Home Delivery Available / വീട്ടിൽ എത്തിച്ചു നൽകുന്നു</strong>
-              </label>
-            </div>
-          </>
-        )}
-
-        {/* WORKER EXTRAS */}
-        {type === 'worker' && (
+        {/* Date for announcements */}
+        {type === 'announcement' && (
           <div className="field">
-            <label htmlFor="worker-exp">Specialty or Work Types / പ്രത്യേകതകൾ (optional)</label>
+            <label htmlFor="event-date">Date of Event / തീയതി (optional)</label>
             <input
-              id="worker-exp"
-              type="text"
-              maxLength={120}
-              placeholder="Specialty or work types"
-              value={experience}
-              onChange={(e) => setExperience(e.target.value)}
+              id="event-date"
+              type="date"
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
             />
           </div>
         )}
 
-        {/* DONOR EXTRAS */}
-        {type === 'donor' && (
-          <>
-            <div className="field">
-              <label htmlFor="donor-age">Age / പ്രായം (optional)</label>
-              <input
-                id="donor-age"
-                type="text"
-                maxLength={3}
-                placeholder="Age"
-                value={age}
-                onChange={(e) => setAge(e.target.value)}
-              />
-            </div>
-            <div className="check" style={{ marginTop: 4 }}>
-              <input
-                id="donor-em"
-                type="checkbox"
-                checked={emergencyReady}
-                onChange={(e) => setEmergencyReady(e.target.checked)}
-              />
-              <label htmlFor="donor-em" style={{ fontSize: 14 }}>
-                <strong>Willing to donate in emergency / അടിയന്തിര ആവശ്യത്തിന് വിളിക്കാം</strong>
+        {/* 5. Contact Phone Number (Public) */}
+        <div className="field">
+          <label htmlFor="form-phone">
+            Phone Number / ഫോൺ നമ്പർ {type !== 'announcement' ? '*' : '(optional)'}
+          </label>
+          <input
+            id="form-phone"
+            type="tel"
+            maxLength={20}
+            placeholder="Primary phone number"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        </div>
+
+        {/* Additional Phone Numbers */}
+        {additionalPhones.map((p, idx) => (
+          <div key={idx} className="field">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label htmlFor={`form-phone-${idx + 2}`} style={{ fontSize: 14 }}>
+                Phone Number {idx + 2} / രണ്ടാമത്തെ നമ്പർ <span className="muted small">(optional)</span>
               </label>
+              <button
+                type="button"
+                onClick={() => removePhone(idx)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#dc2626',
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  padding: '2px 6px',
+                  fontWeight: 600,
+                }}
+              >
+                ✕ Remove
+              </button>
             </div>
-          </>
-        )}
+            <input
+              id={`form-phone-${idx + 2}`}
+              type="tel"
+              maxLength={20}
+              placeholder={`Additional phone number ${idx + 2}`}
+              value={p}
+              onChange={(e) => updatePhone(idx, e.target.value)}
+            />
+          </div>
+        ))}
 
-        {/* SCHOOL & MADRASSA ROLES EXTRAS */}
-        {type === 'school' && (
-          <div
-            style={{
-              padding: '16px',
-              background: '#f8fafc',
-              border: '1.5px solid #e2e8f0',
-              borderRadius: 16,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: 14, color: '#334155' }}>
-              <span>👔</span>
-              <span>Key Roles & Direct Contacts · പ്രധാന ഭാരവാഹികൾ</span>
-            </div>
-            <p style={{ margin: 0, fontSize: 12.5, color: '#64748b', lineHeight: 1.4 }}>
-              Enter the names and direct contact numbers for this school or madrassa (HM, Principal, Sadar Ustad, PTA President, etc.).
-            </p>
-
-            {/* Role 1: Head / HM / Sadar */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>
-                Headmaster / Principal / Sadar Ustad
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(130px, 160px) 1fr 1fr', gap: 8 }}>
-                <select
-                  value={headRole}
-                  onChange={(e) => setHeadRole(e.target.value)}
-                  style={{ minHeight: 40, fontSize: 13, fontWeight: 600 }}
-                >
-                  <option value="Headmaster (HM)">Headmaster (HM)</option>
-                  <option value="Headmistress (HM)">Headmistress (HM)</option>
-                  <option value="Principal">Principal</option>
-                  <option value="Sadar Ustad">Sadar Ustad</option>
-                  <option value="Chief Mudarris">Chief Mudarris</option>
-                  <option value="Anganwadi Worker">Anganwadi Worker</option>
-                </select>
-                <input
-                  type="text"
-                  placeholder="Person Name (പേര്)"
-                  value={headName}
-                  onChange={(e) => setHeadName(e.target.value)}
-                  style={{ minHeight: 40, fontSize: 13 }}
-                />
-                <input
-                  type="tel"
-                  placeholder="Phone Number (നമ്പർ)"
-                  value={headPhone}
-                  onChange={(e) => setHeadPhone(e.target.value)}
-                  style={{ minHeight: 40, fontSize: 13 }}
-                />
-              </div>
-            </div>
-
-            {/* Role 2: PTA President / Committee */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
-                  PTA President / Management Leader
-                </label>
-                <input
-                  type="text"
-                  placeholder="Name (പേര്)"
-                  value={ptaName}
-                  onChange={(e) => setPtaName(e.target.value)}
-                  style={{ minHeight: 40, fontSize: 13 }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
-                  PTA / Leader Phone Number
-                </label>
-                <input
-                  type="tel"
-                  placeholder="Phone number (ഫോൺ)"
-                  value={ptaPhone}
-                  onChange={(e) => setPtaPhone(e.target.value)}
-                  style={{ minHeight: 40, fontSize: 13 }}
-                />
-              </div>
-            </div>
-
-            {/* Role 3: Bus Driver */}
-            <div className="field" style={{ margin: 0 }}>
-              <label htmlFor="school-bus" style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>
-                🚌 School / Madrasa Bus Driver Phone (optional)
-              </label>
-              <input
-                id="school-bus"
-                type="tel"
-                placeholder="Bus driver phone number"
-                value={busPhone}
-                onChange={(e) => setBusPhone(e.target.value)}
-                style={{ minHeight: 40, fontSize: 13 }}
-              />
-            </div>
-
-            {/* Working / Class Hours */}
-            <div className="field" style={{ margin: 0 }}>
-              <label htmlFor="school-hours" style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>
-                🕒 Class & Working Hours (e.g. 9:30 AM - 4:00 PM or 7:00 AM - 8:30 AM)
-              </label>
-              <input
-                id="school-hours"
-                type="text"
-                placeholder="e.g. 9:30 AM - 4:00 PM"
-                value={workingHours}
-                onChange={(e) => setWorkingHours(e.target.value)}
-                style={{ minHeight: 40, fontSize: 13 }}
-              />
-            </div>
+        {additionalPhones.length < 3 && (
+          <div style={{ marginTop: -2, marginBottom: 4 }}>
+            <button
+              type="button"
+              className="btn light"
+              onClick={addPhone}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 14px',
+                minHeight: 38,
+                fontSize: 13.5,
+                borderRadius: 12,
+                cursor: 'pointer',
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              + Add another phone number / മറ്റൊരു നമ്പർ ചേർക്കുക
+            </button>
           </div>
         )}
-
-        {/* ANNOUNCEMENT EXTRAS */}
-        {type === 'announcement' && (
-          <>
-            <div className="field">
-              <label htmlFor="event-date">Date of Event / തീയതി (optional)</label>
-              <input
-                id="event-date"
-                type="date"
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="org-by">Organized By / സംഘാടകർ (optional)</label>
-              <input
-                id="org-by"
-                type="text"
-                maxLength={80}
-                placeholder="Organized by"
-                value={organizedBy}
-                onChange={(e) => setOrganizedBy(e.target.value)}
-              />
-            </div>
-          </>
-        )}
-
-        {/* 5. Contact Phone Number & Multiple Numbers (Public) */}
-        <MultiPhoneInput
-          primaryPhone={phone}
-          onPrimaryChange={setPhone}
-          additionalPhones={additionalPhones}
-          onAdditionalChange={setAdditionalPhones}
-          required={type !== 'announcement'}
-          label="Phone Number / ഫോൺ നമ്പർ"
-          placeholder="Primary phone number (e.g. 9846012345)"
-          maxPhones={6}
-        />
 
         {/* WhatsApp Number (optional) */}
         {type !== 'donor' && (
@@ -1066,17 +674,18 @@ function ShareFormInner() {
           />
         </div>
 
-        {/* 7. Extra details textarea */}
+        {/* Optional note */}
         <div className="field">
-          <label htmlFor="form-details">
-            Additional Details / കൂടുതൽ വിവരങ്ങൾ <span className="muted small">(optional)</span>
+          <label htmlFor="form-note">
+            Note / കുറിപ്പ് <span className="muted small">(optional)</span>
           </label>
-          <textarea
-            id="form-details"
-            maxLength={1000}
-            placeholder="Additional details"
-            value={details}
-            onChange={(e) => setDetails(e.target.value)}
+          <input
+            id="form-note"
+            type="text"
+            maxLength={180}
+            placeholder="Brief note or landmark (optional)"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
           />
         </div>
 

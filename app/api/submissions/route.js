@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { normalizeSupabaseUrl } from '../../../lib/supabase';
-import { memoryStore } from '../../../lib/mockStore';
 
 const rawSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl);
@@ -26,8 +25,6 @@ async function sendAlertEmail(submission) {
     transport: 'Taxi / Auto / Transportation',
     worker: 'Native Worker / Trade',
     contact: 'Important Contact',
-    school: 'School / Madrassa',
-    madrassa: 'School / Madrassa',
     bus: 'Bus Timing',
     donor: 'Blood Donor',
     announcement: 'Announcement',
@@ -161,6 +158,20 @@ export async function POST(req) {
       return NextResponse.json({ ok: false, error: 'Please provide a valid title.' }, { status: 400 });
     }
 
+    const supabaseKey = supabaseServiceKey || supabaseAnonKey;
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json(
+        { ok: false, error: 'Database is not configured yet. Please check .env.local' },
+        { status: 503 }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
     let cleanPhone = phone ? phone.trim() : null;
     let safeDesc = description?.trim() || title.trim() || 'N/A';
 
@@ -176,7 +187,6 @@ export async function POST(req) {
     }
 
     const row = {
-      id: `sub-${Date.now()}`,
       type: type || 'other',
       title: title.trim(),
       description: safeDesc,
@@ -185,23 +195,7 @@ export async function POST(req) {
       submitter_contact: submitter_contact ? submitter_contact.trim() : null,
       consent: Boolean(consent),
       status: 'pending',
-      created_at: new Date().toISOString(),
     };
-
-    const supabaseKey = supabaseServiceKey || supabaseAnonKey;
-    if (!supabaseUrl || !supabaseKey) {
-      // Save directly to in-memory store
-      memoryStore.getTable('submissions').unshift(row);
-      memoryStore.saveToStorage();
-      return NextResponse.json({ ok: true, mode: 'memory' });
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    });
 
     // Do NOT chain .select() or .single() here.
     // The RLS policy on `submissions` only allows public/anon INSERT with status='pending'.

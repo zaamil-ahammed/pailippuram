@@ -41,35 +41,6 @@ export default function Panchayath() {
       <PageHeader title="Panchayath" ml="പഞ്ചായത്ത് വിവരങ്ങൾ" />
       <main className="body">
         <p className="note">Services are things you apply for or pay for. Notices are official announcements.</p>
-        <div style={{ marginTop: -4, marginBottom: 12 }}>
-          <a
-            href="/schools"
-            className="card"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '12px 14px',
-              background: 'var(--accent-tint)',
-              border: '1.5px solid var(--accent-border)',
-              borderRadius: 14,
-              textDecoration: 'none',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 20 }}>🏫</span>
-              <div>
-                <strong style={{ fontSize: 13.5, color: 'var(--ink)', display: 'block' }}>
-                  Public Schools & Anganwadis Directory · വിദ്യാലയങ്ങൾ
-                </strong>
-                <span style={{ fontSize: 11.5, color: 'var(--gold-dark)', fontWeight: 600 }}>
-                  Headmaster, Sadar Ustad, PTA, Bus & Office Roles & Numbers →
-                </span>
-              </div>
-            </div>
-            <span style={{ fontSize: 16, color: 'var(--gold-dark)', fontWeight: 800 }}>→</span>
-          </a>
-        </div>
         {error ? <p className="error">{error}</p> : null}
         {loading ? <p className="muted">Loading...</p> : null}
         {PANCHAYATH_SECTIONS.map(({ value }) => {

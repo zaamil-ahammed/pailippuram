@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@400;600;800&family=Gayathri:wght@600;800&display=swap');
-
 :root {
   /* Black, White & Subtle Gold System */
   --primary: #121212;          /* Rich Obsidian Black */
@@ -77,16 +75,14 @@ p { margin: 0; }
   color: var(--ink);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
-.band input[type='search']::placeholder,
-.search-bar-container input::placeholder {
-  color: #6b6862 !important;
-  opacity: 0.75 !important;
-  font-style: normal !important;
+.band input[type='search']::placeholder {
+  color: #8b8882 !important;
+  opacity: 0.45 !important;
+  font-style: italic;
 }
-.band input[type='search']:focus,
-.search-bar-container input:focus {
+.band input[type='search']:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.35), 0 8px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.35), 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .bandrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -206,31 +202,31 @@ input:focus, select:focus, textarea:focus {
 }
 textarea { padding: 12px 14px; min-height: 100px; resize: vertical; }
 
-/* Form placeholder / sample text made cleanly legible */
+/* Form placeholder / sample text made subtly visible & non-intrusive */
 input::placeholder,
 textarea::placeholder,
 select::placeholder {
-  color: #78716c !important;
-  opacity: 0.65 !important;
+  color: #a8a29e !important;
+  opacity: 0.35 !important;
   font-size: 13.5px !important;
   font-weight: 400 !important;
-  font-style: normal !important;
+  font-style: italic !important;
 }
 
 input::-webkit-input-placeholder,
 textarea::-webkit-input-placeholder {
-  color: #78716c !important;
-  opacity: 0.65 !important;
+  color: #a8a29e !important;
+  opacity: 0.35 !important;
   font-size: 13.5px !important;
-  font-style: normal !important;
+  font-style: italic !important;
 }
 
 input::-moz-placeholder,
 textarea::-moz-placeholder {
-  color: #78716c !important;
-  opacity: 0.65 !important;
+  color: #a8a29e !important;
+  opacity: 0.35 !important;
   font-size: 13.5px !important;
-  font-style: normal !important;
+  font-style: italic !important;
 }
 
 .check { display: flex; align-items: flex-start; gap: 12px; min-height: 44px; }
@@ -422,17 +418,6 @@ textarea::-moz-placeholder {
   to {
     opacity: 1;
     transform: translate(-50%, 0);
-  }
-}
-
-@keyframes slideUpToastOut {
-  from {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-  to {
-    opacity: 0;
-    transform: translate(-50%, -16px);
   }
 }
 
