@@ -1,6 +1,5 @@
 'use client';
 import { useEffect } from 'react';
-import Link from 'next/link';
 
 // Shown instead of a blank page when something unexpected breaks.
 export default function Error({ error, reset }) {
@@ -11,7 +10,7 @@ export default function Error({ error, reset }) {
   const handleClearCacheAndReload = () => {
     if (typeof window !== 'undefined') {
       try {
-        window.localStorage.removeItem('np_mock_db');
+        window.localStorage.removeItem('pailippuram_mock_db');
       } catch (e) {
         // ignore
       }
@@ -42,12 +41,12 @@ export default function Error({ error, reset }) {
             <button type="button" className="btn dark" onClick={() => reset()} style={{ minHeight: 40 }}>
               Try again
             </button>
-            <Link href="/" className="btn" style={{ minHeight: 40, textDecoration: 'none' }}>
+            <a href="/" className="btn" style={{ minHeight: 40, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
               🏠 Go to Home
-            </Link>
-            <Link href="/admin" className="btn light" style={{ minHeight: 40, textDecoration: 'none' }}>
+            </a>
+            <a href="/admin" className="btn light" style={{ minHeight: 40, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
               🛡️ Admin
-            </Link>
+            </a>
           </div>
           <div style={{ marginTop: 20, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
             <button

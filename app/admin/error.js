@@ -1,6 +1,5 @@
 'use client';
 import { useEffect } from 'react';
-import Link from 'next/link';
 
 export default function AdminError({ error, reset }) {
   useEffect(() => {
@@ -10,7 +9,7 @@ export default function AdminError({ error, reset }) {
   const handleClearCacheAndReload = () => {
     if (typeof window !== 'undefined') {
       try {
-        window.localStorage.removeItem('np_mock_db');
+        window.localStorage.removeItem('pailippuram_mock_db');
       } catch (e) {
         // ignore
       }
@@ -71,20 +70,20 @@ export default function AdminError({ error, reset }) {
             >
               🔄 Try Again
             </button>
-            <Link
+            <a
               href="/admin"
               className="btn"
-              style={{ minHeight: 42, fontSize: 13.5, textDecoration: 'none' }}
+              style={{ minHeight: 42, fontSize: 13.5, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
             >
               ← Admin Dashboard
-            </Link>
-            <Link
+            </a>
+            <a
               href="/"
               className="btn light"
-              style={{ minHeight: 42, fontSize: 13.5, textDecoration: 'none' }}
+              style={{ minHeight: 42, fontSize: 13.5, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
             >
               🏠 Home
-            </Link>
+            </a>
           </div>
 
           <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #fed7d7' }}>

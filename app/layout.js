@@ -11,7 +11,6 @@ export const metadata = {
     title: 'Nammude Pailippuram',
     description: 'Local community information directory for Pailippuram, Kerala: contacts, local shops, bus timings, blood donors, panchayath details, announcements, and submissions.',
   },
-  manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -28,14 +27,6 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@400;600;800&family=Gayathri:wght@600;800&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body>
         <Shell>
           <InstallPrompt />
@@ -47,13 +38,13 @@ export default function RootLayout({ children }) {
             </span>
             <span style={{ textAlign: 'center' }}>
               A{' '}
-              <Link href="https://www.instagram.com/victory_pailippuram" target="_blank" rel="noopener noreferrer">
+              <a href="https://www.instagram.com/victory_pailippuram" target="_blank" rel="noopener noreferrer">
                 <strong>Victory</strong>
-              </Link>{' '}
+              </a>{' '}
               Initiative · Crafted by{' '}
-              <Link href="https://42rgb.linklee.in" target="_blank" rel="noopener noreferrer">
+              <a href="https://42rgb.linklee.in" target="_blank" rel="noopener noreferrer">
                 <strong>@zaamil.ahmed</strong>
-              </Link>
+              </a>
             </span>
           </footer>
         </Shell>
