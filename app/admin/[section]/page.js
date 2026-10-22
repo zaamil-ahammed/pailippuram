@@ -6,6 +6,7 @@ import PageHeader from '../../../components/PageHeader';
 import SearchBar from '../../../components/SearchBar';
 import { useAdmin } from '../../../components/AdminGate';
 import { cleanSearch, formatDate, supabase, isPinnedAnnouncement } from '../../../lib/supabase';
+import { adminMutate } from '../../../lib/adminApi';
 import { logAudit } from '../../../lib/audit';
 import { useRows } from '../../../lib/useRows';
 import { OUTDATED_DAYS, SECTIONS } from '../../../lib/sections';
@@ -64,12 +65,12 @@ export default function AdminList() {
     setActionError('');
     const isCurrentlyLive = row.status === 'approved';
     const nextStatus = isCurrentlyLive ? 'hidden' : 'approved';
-    let { error: err } = await supabase.from(cfg.table).update({ status: nextStatus, updated_at: new Date().toISOString() }).eq('id', row.id);
-    if (err && err.message && err.message.includes('status_check')) {
-      const altStatus = nextStatus === 'hidden' ? 'archived' : 'hidden';
-      const altRes = await supabase.from(cfg.table).update({ status: altStatus, updated_at: new Date().toISOString() }).eq('id', row.id);
-      err = altRes.error;
-    }
+    const { error: err } = await adminMutate({
+      action: 'update',
+      table: cfg.table,
+      id: row.id,
+      data: { status: nextStatus },
+    });
     if (err) return setActionError(err.message || 'Could not save. Please try again.');
     await logAudit(user, { action: isCurrentlyLive ? 'hide' : 'show', table: cfg.table, rowId: row.id, note: cfg.title(row) });
     showToast({
@@ -89,7 +90,12 @@ export default function AdminList() {
     } else {
       newBody = `[PINNED]\n${newBody.replace(/^(?:\[PINNED\]\s*)+/i, '').trim()}`;
     }
-    const { error: err } = await supabase.from('announcements').update({ body: newBody, is_pinned: !currentlyPinned, updated_at: new Date().toISOString() }).eq('id', row.id);
+    const { error: err } = await adminMutate({
+      action: 'update',
+      table: 'announcements',
+      id: row.id,
+      data: { body: newBody, is_pinned: !currentlyPinned },
+    });
     if (err) return setActionError(err.message || 'Could not update pin status.');
     await logAudit(user, { action: currentlyPinned ? 'unpin announcement' : 'pin announcement', table: 'announcements', rowId: row.id, note: row.title });
     showToast({
@@ -107,7 +113,11 @@ export default function AdminList() {
       return;
     }
     setDeletingId(null);
-    const { error: err } = await supabase.from(cfg.table).delete().eq('id', row.id);
+    const { error: err } = await adminMutate({
+      action: 'delete',
+      table: cfg.table,
+      id: row.id,
+    });
     if (err) return setActionError('Could not delete. Please try again.');
     await logAudit(user, { action: 'delete', table: cfg.table, rowId: row.id, note: cfg.title(row) });
     showToast({

@@ -6,6 +6,7 @@ import MultiPhoneInput from '../../../../components/MultiPhoneInput';
 import ImageUploadField from '../../../../components/ImageUploadField';
 import { useAdmin } from '../../../../components/AdminGate';
 import { supabase, extractAllPhones, isPinnedAnnouncement, cleanAnnouncementBody, cleanAnnouncementTitle } from '../../../../lib/supabase';
+import { adminMutate } from '../../../../lib/adminApi';
 import { logAudit } from '../../../../lib/audit';
 import { useRows } from '../../../../lib/useRows';
 import { SECTIONS } from '../../../../lib/sections';
@@ -261,175 +262,22 @@ export default function AdminEdit() {
 
     async function executeSave(data) {
       if (isNew) {
-        let insertPayload = { ...data, ...cfg.match };
-        let res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
-
-        // 1. updated_by column missing or RLS/UUID syntax issue
-        if (res.error && res.error.message && (res.error.message.includes('updated_by') || res.error.message.includes('uuid'))) {
-          const { updated_by, ...cleaned } = insertPayload;
-          insertPayload = cleaned;
-          res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
-        }
-
-        // 2. photo_url column missing on unmigrated remote database
-        if (res.error && res.error.message && res.error.message.includes('photo_url')) {
-          const { photo_url, ...noPhoto } = insertPayload;
-          insertPayload = noPhoto;
-          res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
-        }
-
-        // 3. is_pinned column missing on unmigrated remote announcements table
-        if (res.error && res.error.message && res.error.message.includes('is_pinned')) {
-          const { is_pinned, ...noPinnedCol } = insertPayload;
-          insertPayload = noPinnedCol;
-          res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
-        }
-
-        // 4. direction column missing on unmigrated remote bus_routes table
-        if (res.error && res.error.message && res.error.message.includes('direction')) {
-          const { direction, ...noDir } = insertPayload;
-          insertPayload = noDir;
-          res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
-        }
-
-        // 5. phone_check length constraint
-        if (res.error && res.error.message && res.error.message.includes('phone_check')) {
-          const safePhone = (insertPayload.phone || '').slice(0, 15) || null;
-          insertPayload = { ...insertPayload, phone: safePhone };
-          res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
-        }
-
-        // 6. status_check constraint
-        if (res.error && res.error.message && res.error.message.includes('status_check')) {
-          const altStatus = insertPayload.status === 'hidden' ? 'archived' : 'hidden';
-          insertPayload = { ...insertPayload, status: altStatus };
-          res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
-        }
-
-        // 7. category foreign key error
-        if (res.error && res.error.message && (res.error.message.includes('category') || res.error.message.includes('foreign key'))) {
-          const { category_id, ...noCat } = insertPayload;
-          insertPayload = noCat;
-          res = await supabase.from(cfg.table).insert(insertPayload).select('id').single();
-        }
-
-        // 8. listings_kind_check constraint (remote database only allows specific kinds)
-        if (cfg.table === 'listings' && res.error && res.error.message && (res.error.message.includes('listings_kind_check') || res.error.message.includes('kind_check'))) {
-          const intendedKind = cfg.match?.kind;
-          let safeDesc = insertPayload.description || '';
-          if (intendedKind === 'worker' && !safeDesc.includes('[WORKER]')) {
-            safeDesc = safeDesc ? `[WORKER]\n${safeDesc}` : '[WORKER]';
-          } else if (intendedKind === 'transport' && !safeDesc.includes('[TRANSPORT]')) {
-            safeDesc = safeDesc ? `[TRANSPORT]\n${safeDesc}` : '[TRANSPORT]';
-          }
-          const baseData = { ...insertPayload, description: safeDesc.slice(0, 600) || null };
-
-          const candidateKinds = ['business', 'shop', 'contact'].filter((k) => k !== intendedKind);
-          for (const candKind of candidateKinds) {
-            let tryPayload = { ...baseData, kind: candKind };
-            let candRes = await supabase.from(cfg.table).insert(tryPayload).select('id').single();
-            if (candRes.error && (candRes.error.message.includes('updated_by') || candRes.error.message.includes('uuid'))) {
-              const { updated_by, ...noUser } = tryPayload;
-              tryPayload = noUser;
-              candRes = await supabase.from(cfg.table).insert(tryPayload).select('id').single();
-            }
-            if (candRes.error && (candRes.error.message.includes('category') || candRes.error.message.includes('foreign key'))) {
-              tryPayload = { ...tryPayload, category_id: null };
-              candRes = await supabase.from(cfg.table).insert(tryPayload).select('id').single();
-            }
-            if (!candRes.error) {
-              res = candRes;
-              break;
-            }
-          }
-        }
-
+        const insertPayload = { ...data, ...cfg.match };
+        const res = await adminMutate({
+          action: 'insert',
+          table: cfg.table,
+          data: insertPayload,
+        });
         return { error: res.error, rowId: res.data?.id };
       } else {
-        let updatePayload = { ...data };
-        let res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
-
-        // 1. updated_by column missing or RLS/UUID syntax issue
-        if (res.error && res.error.message && (res.error.message.includes('updated_by') || res.error.message.includes('uuid'))) {
-          const { updated_by, ...cleaned } = updatePayload;
-          updatePayload = cleaned;
-          res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
-        }
-
-        // 2. photo_url column missing on unmigrated remote database
-        if (res.error && res.error.message && res.error.message.includes('photo_url')) {
-          const { photo_url, ...noPhoto } = updatePayload;
-          updatePayload = noPhoto;
-          res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
-        }
-
-        // 3. is_pinned column missing on unmigrated remote announcements table
-        if (res.error && res.error.message && res.error.message.includes('is_pinned')) {
-          const { is_pinned, ...noPinnedCol } = updatePayload;
-          updatePayload = noPinnedCol;
-          res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
-        }
-
-        // 4. direction column missing on unmigrated remote bus_routes table
-        if (res.error && res.error.message && res.error.message.includes('direction')) {
-          const { direction, ...noDir } = updatePayload;
-          updatePayload = noDir;
-          res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
-        }
-
-        // 5. phone_check length constraint
-        if (res.error && res.error.message && res.error.message.includes('phone_check')) {
-          const safePhone = (updatePayload.phone || '').slice(0, 15) || null;
-          updatePayload = { ...updatePayload, phone: safePhone };
-          res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
-        }
-
-        // 6. status_check constraint
-        if (res.error && res.error.message && res.error.message.includes('status_check')) {
-          const altStatus = updatePayload.status === 'hidden' ? 'archived' : 'hidden';
-          updatePayload = { ...updatePayload, status: altStatus };
-          res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
-        }
-
-        // 7. category foreign key error on update
-        if (res.error && res.error.message && (res.error.message.includes('category') || res.error.message.includes('foreign key'))) {
-          const { category_id, ...noCat } = updatePayload;
-          updatePayload = noCat;
-          res = await supabase.from(cfg.table).update(updatePayload).eq('id', id);
-        }
-
-        // 8. listings_kind_check constraint on update
-        if (cfg.table === 'listings' && res.error && res.error.message && (res.error.message.includes('listings_kind_check') || res.error.message.includes('kind_check'))) {
-          const intendedKind = cfg.match?.kind;
-          let safeDesc = updatePayload.description || '';
-          if (intendedKind === 'worker' && !safeDesc.includes('[WORKER]')) {
-            safeDesc = safeDesc ? `[WORKER]\n${safeDesc}` : '[WORKER]';
-          } else if (intendedKind === 'transport' && !safeDesc.includes('[TRANSPORT]')) {
-            safeDesc = safeDesc ? `[TRANSPORT]\n${safeDesc}` : '[TRANSPORT]';
-          }
-          const baseUpdate = { ...updatePayload, description: safeDesc.slice(0, 600) || null };
-
-          const candidateKinds = ['business', 'shop', 'contact'].filter((k) => k !== intendedKind);
-          for (const candKind of candidateKinds) {
-            let tryPayload = { ...baseUpdate, kind: candKind };
-            let candRes = await supabase.from(cfg.table).update(tryPayload).eq('id', id);
-            if (candRes.error && (candRes.error.message.includes('updated_by') || candRes.error.message.includes('uuid'))) {
-              const { updated_by, ...noUser } = tryPayload;
-              tryPayload = noUser;
-              candRes = await supabase.from(cfg.table).update(tryPayload).eq('id', id);
-            }
-            if (candRes.error && (candRes.error.message.includes('category') || candRes.error.message.includes('foreign key'))) {
-              tryPayload = { ...tryPayload, category_id: null };
-              candRes = await supabase.from(cfg.table).update(tryPayload).eq('id', id);
-            }
-            if (!candRes.error) {
-              res = candRes;
-              break;
-            }
-          }
-        }
-
-        return { error: res.error, rowId: id };
+        const updatePayload = { ...data };
+        const res = await adminMutate({
+          action: 'update',
+          table: cfg.table,
+          id,
+          data: updatePayload,
+        });
+        return { error: res.error, rowId: res.data?.id || id };
       }
     }
 

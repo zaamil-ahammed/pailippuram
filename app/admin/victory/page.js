@@ -5,6 +5,7 @@ import PageHeader from '../../../components/PageHeader';
 import ImageUploadField from '../../../components/ImageUploadField';
 import { useAdmin } from '../../../components/AdminGate';
 import { supabase, cleanSearch } from '../../../lib/supabase';
+import { adminMutate } from '../../../lib/adminApi';
 import { logAudit } from '../../../lib/audit';
 import { useRows } from '../../../lib/useRows';
 import { VICTORY_WINGS, VICTORY_PORTFOLIOS } from '../../../lib/sections';
@@ -165,18 +166,11 @@ export default function AdminVictoryPage() {
       };
 
       if (editingMember === 'new') {
-        let { data, error: insertErr } = await supabase
-          .from('victory_members')
-          .insert(payload)
-          .select('id')
-          .single();
-
-        if (insertErr && insertErr.message && insertErr.message.includes('photo_url')) {
-          const { photo_url, ...noPhoto } = payload;
-          const retryRes = await supabase.from('victory_members').insert(noPhoto).select('id').single();
-          data = retryRes.data;
-          insertErr = retryRes.error;
-        }
+        const { data, error: insertErr } = await adminMutate({
+          action: 'insert',
+          table: 'victory_members',
+          data: payload,
+        });
 
         if (insertErr) throw insertErr;
 
@@ -194,16 +188,12 @@ export default function AdminVictoryPage() {
           sub: `${payload.name} (${payload.role})`,
         });
       } else {
-        let { error: updateErr } = await supabase
-          .from('victory_members')
-          .update(payload)
-          .eq('id', editingMember.id);
-
-        if (updateErr && updateErr.message && updateErr.message.includes('photo_url')) {
-          const { photo_url, ...noPhoto } = payload;
-          const retryRes = await supabase.from('victory_members').update(noPhoto).eq('id', editingMember.id);
-          updateErr = retryRes.error;
-        }
+        const { error: updateErr } = await adminMutate({
+          action: 'update',
+          table: 'victory_members',
+          id: editingMember.id,
+          data: payload,
+        });
 
         if (updateErr) throw updateErr;
 
@@ -239,10 +229,12 @@ export default function AdminVictoryPage() {
     setErrorMsg('');
     const nextStatus = member.status === 'approved' ? 'hidden' : 'approved';
     try {
-      const { error: updateErr } = await supabase
-        .from('victory_members')
-        .update({ status: nextStatus, updated_at: new Date().toISOString() })
-        .eq('id', member.id);
+      const { error: updateErr } = await adminMutate({
+        action: 'update',
+        table: 'victory_members',
+        id: member.id,
+        data: { status: nextStatus },
+      });
 
       if (updateErr) throw updateErr;
 
@@ -273,10 +265,11 @@ export default function AdminVictoryPage() {
     }
     setDeletingId(null);
     try {
-      const { error: delErr } = await supabase
-        .from('victory_members')
-        .delete()
-        .eq('id', member.id);
+      const { error: delErr } = await adminMutate({
+        action: 'delete',
+        table: 'victory_members',
+        id: member.id,
+      });
 
       if (delErr) throw delErr;
 

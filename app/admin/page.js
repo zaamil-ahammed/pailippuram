@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { MenuButton } from '../../components/PageHeader';
 import { useAdmin } from '../../components/AdminGate';
 import { supabase, formatDate, extractAllPhones, cleanDescription } from '../../lib/supabase';
+import { adminMutate } from '../../lib/adminApi';
 import { logAudit } from '../../lib/audit';
 import { useRows } from '../../lib/useRows';
 import { OUTDATED_DAYS, SECTIONS, SECTION_KEYS, SUBMISSION_LABEL, SUBMISSION_SECTION, getSubmissionSection, getSubmissionLabel } from '../../lib/sections';
@@ -69,15 +70,15 @@ export default function AdminHome() {
   async function resolve(row, status, action) {
     setActionError('');
     let nextStatus = status;
-    // Remote database submissions_status_check only allows 'pending', 'approved', 'rejected'
     if (nextStatus === 'handled') {
       nextStatus = 'approved';
     }
-    let { error } = await supabase.from('submissions').update({ status: nextStatus }).eq('id', row.id);
-    if (error && error.message && error.message.includes('status_check')) {
-      const fallbackRes = await supabase.from('submissions').update({ status: 'approved' }).eq('id', row.id);
-      error = fallbackRes.error;
-    }
+    const { error } = await adminMutate({
+      action: 'update',
+      table: 'submissions',
+      id: row.id,
+      data: { status: nextStatus },
+    });
     if (error) return setActionError(error.message || 'Could not save. Please try again.');
     await logAudit(user, { action, table: 'submissions', rowId: row.id, note: row.title });
     showToast({
