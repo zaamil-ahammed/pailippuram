@@ -57,10 +57,13 @@ export default function AdminVictoryPage() {
     })();
   }, [loading, rows?.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const allMembers = useRows.length ? rows : rows;
+  const effectiveRows = useMemo(() => {
+    if (Array.isArray(rows) && rows.length > 0) return rows;
+    return STARTER_VICTORY_MEMBERS;
+  }, [rows]);
 
   const filteredMembers = useMemo(() => {
-    let list = Array.isArray(rows) ? rows : [];
+    let list = effectiveRows;
     if (activeTab === 'hidden') {
       list = list.filter((m) => m.status === 'hidden');
     } else if (activeTab !== 'all') {
@@ -77,7 +80,7 @@ export default function AdminVictoryPage() {
       );
     }
     return list;
-  }, [rows, activeTab, searchTerm]);
+  }, [effectiveRows, activeTab, searchTerm]);
 
   const handleOpenAdd = () => {
     setErrorMsg('');
@@ -279,21 +282,44 @@ export default function AdminVictoryPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
             <div>
-              <h2 style={{ fontSize: 20 }}>Committee Members ({rows?.length || 0})</h2>
+              <h2 style={{ fontSize: 20 }}>Committee Members ({effectiveRows?.length || 0})</h2>
               <span className="muted small">Add photos, edit roles, links and wings for 2026–27 roster</span>
             </div>
-            <button
-              type="button"
-              className="btn dark"
-              onClick={handleOpenAdd}
-              style={{ gap: 6, minHeight: 40, padding: '0 16px' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              Add Member
-            </button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn light"
+                onClick={async () => {
+                  if (confirm('Restore the standard 25-member 2026–27 committee roster?')) {
+                    try {
+                      for (const m of STARTER_VICTORY_MEMBERS) {
+                        await supabase.from('victory_members').insert(m);
+                      }
+                      reload();
+                      setSuccessMsg('2026–27 roster restored successfully!');
+                      setTimeout(() => setSuccessMsg(''), 4000);
+                    } catch (err) {
+                      console.warn(err);
+                    }
+                  }
+                }}
+                style={{ minHeight: 40, padding: '0 14px' }}
+              >
+                ↻ Reset Roster
+              </button>
+              <button
+                type="button"
+                className="btn dark"
+                onClick={handleOpenAdd}
+                style={{ gap: 6, minHeight: 40, padding: '0 16px' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Add Member
+              </button>
+            </div>
           </div>
 
           {/* Search Box */}
@@ -363,7 +389,7 @@ export default function AdminVictoryPage() {
               className={`chip ${activeTab === 'central' ? 'on' : ''}`}
               onClick={() => setActiveTab('central')}
             >
-              Central ({(rows || []).filter((m) => m.wing === 'central').length})
+              Central ({(effectiveRows || []).filter((m) => m.wing === 'central').length})
             </button>
             <button
               type="button"
@@ -371,12 +397,12 @@ export default function AdminVictoryPage() {
               onClick={() => setActiveTab('hidden')}
               style={{ color: activeTab === 'hidden' ? '#ffffff' : '#94a3b8' }}
             >
-              Hidden ({(rows || []).filter((m) => m.status === 'hidden').length})
+              Hidden ({(effectiveRows || []).filter((m) => m.status === 'hidden').length})
             </button>
           </div>
         </div>
 
-        {error ? <p className="error">{error}</p> : null}
+        {error && effectiveRows.length === 0 ? <p className="error">{error}</p> : null}
         {errorMsg ? <p className="error">{errorMsg}</p> : null}
 
         {/* Member Cards List */}

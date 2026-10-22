@@ -15,7 +15,7 @@ alter table if exists bus_routes add column if not exists direction text;
 alter table if exists listings drop constraint if exists listings_kind_check;
 alter table if exists listings add constraint listings_kind_check check (kind in ('contact', 'business', 'shop', 'worker', 'transport'));
 alter table if exists categories drop constraint if exists categories_kind_check;
-alter table if exists categories add constraint categories_kind_check check (kind in ('contact', 'business', 'shop', 'worker', 'transport'));
+alter table if exists categories add constraint categories_kind_check check (kind in ('contact', 'business', 'shop', 'worker', 'transport', 'education', 'school', 'panchayath', 'announcement', 'donor', 'bus', 'victory'));
 
 notify pgrst, 'reload schema';
 
@@ -23,7 +23,7 @@ notify pgrst, 'reload schema';
 
 create table if not exists categories (
   id serial primary key,
-  kind text not null check (kind in ('contact', 'business', 'worker', 'transport')),
+  kind text not null check (kind in ('contact', 'business', 'shop', 'worker', 'transport', 'education', 'school', 'panchayath', 'announcement', 'donor', 'bus', 'victory')),
   name text not null,
   name_ml text,
   unique (kind, name)
