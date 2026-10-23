@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { MenuButton } from '../../components/PageHeader';
 import { useAdmin } from '../../components/AdminGate';
@@ -8,6 +8,8 @@ import { adminMutate } from '../../lib/adminApi';
 import { logAudit } from '../../lib/audit';
 import { useRows } from '../../lib/useRows';
 import { OUTDATED_DAYS, SECTIONS, SECTION_KEYS, SUBMISSION_LABEL, SUBMISSION_SECTION, getSubmissionSection, getSubmissionLabel } from '../../lib/sections';
+import { publishSubmission } from '../../lib/publishSubmission';
+import { showToast } from '../../lib/toast';
 
 function outdatedCutoff() {
   return new Date(Date.now() - OUTDATED_DAYS * 86400000).toISOString();
@@ -17,68 +19,212 @@ export default function AdminHome() {
   const { user, signOut } = useAdmin();
   const [counts, setCounts] = useState({});
   const [outdated, setOutdated] = useState(0);
+  const [processingId, setProcessingId] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState('');
 
   const queue = useRows((s) => s.from('submissions').select('*').eq('status', 'pending').order('created_at', { ascending: false }), []);
   const waiting = Array.isArray(queue.rows)
     ? [...queue.rows].sort((a, b) => (b.type === 'removal') - (a.type === 'removal'))
     : [];
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const next = {};
-        let stale = 0;
-        for (const key of SECTION_KEYS) {
-          const cfg = SECTIONS[key];
-          if (!cfg) continue;
-          let all = supabase.from(cfg.table).select('id', { count: 'exact', head: true });
-          let old = supabase.from(cfg.table).select('id', { count: 'exact', head: true }).eq('status', 'approved')
-            .or(`verified_at.is.null,verified_at.lt.${outdatedCutoff()}`);
-          if (key === 'transport') {
-            all = all.or('kind.eq.transport,description.ilike.%[TRANSPORT]%,description.ilike.%auto%,description.ilike.%taxi%');
-            old = old.or('kind.eq.transport,description.ilike.%[TRANSPORT]%,description.ilike.%auto%,description.ilike.%taxi%');
-          } else if (key === 'workers') {
-            all = all.or('kind.eq.worker,description.ilike.%[WORKER]%');
-            old = old.or('kind.eq.worker,description.ilike.%[WORKER]%');
-          } else if (key === 'shops') {
-            all = all.or('kind.eq.business,kind.eq.shop');
-            old = old.or('kind.eq.business,kind.eq.shop');
-          } else {
-            for (const [k, v] of Object.entries(cfg.match || {})) {
-              all = all.eq(k, v);
-              old = old.eq(k, v);
-            }
+  const refreshCounts = useCallback(async () => {
+    try {
+      const next = {};
+      let stale = 0;
+      for (const key of SECTION_KEYS) {
+        const cfg = SECTIONS[key];
+        if (!cfg) continue;
+        let all = supabase.from(cfg.table).select('id', { count: 'exact', head: true });
+        let old = supabase.from(cfg.table).select('id', { count: 'exact', head: true }).eq('status', 'approved')
+          .or(`verified_at.is.null,verified_at.lt.${outdatedCutoff()}`);
+        if (key === 'transport') {
+          all = all.or('kind.eq.transport,description.ilike.%[TRANSPORT]%,description.ilike.%auto%,description.ilike.%taxi%');
+          old = old.or('kind.eq.transport,description.ilike.%[TRANSPORT]%,description.ilike.%auto%,description.ilike.%taxi%');
+        } else if (key === 'workers') {
+          all = all.or('kind.eq.worker,description.ilike.%[WORKER]%');
+          old = old.or('kind.eq.worker,description.ilike.%[WORKER]%');
+        } else if (key === 'shops') {
+          all = all.or('kind.eq.business,kind.eq.shop');
+          old = old.or('kind.eq.business,kind.eq.shop');
+        } else {
+          for (const [k, v] of Object.entries(cfg.match || {})) {
+            all = all.eq(k, v);
+            old = old.eq(k, v);
           }
-          const [a, o] = await Promise.all([all, cfg.verify ? old : Promise.resolve({ count: 0 })]);
-          next[key] = a.count || 0;
-          stale += o.count || 0;
         }
-        setCounts(next);
-        setOutdated(stale);
-      } catch (err) {
-        console.error('Error fetching admin counts:', err);
+        const [a, o] = await Promise.all([all, cfg.verify ? old : Promise.resolve({ count: 0 })]);
+        next[key] = a.count || 0;
+        stale += o.count || 0;
       }
-    })();
+      setCounts(next);
+      setOutdated(stale);
+    } catch (err) {
+      console.error('Error fetching admin counts:', err);
+    }
   }, []);
+
+  useEffect(() => {
+    refreshCounts();
+  }, [refreshCounts]);
 
   const [actionError, setActionError] = useState('');
 
+  // 1-Click Approve and Publish to Live Directory
+  async function handleApproveAndPublish(row) {
+    setActionError('');
+    setProcessingId(row.id);
+    try {
+      const res = await publishSubmission(row, user);
+      if (!res.success) {
+        setActionError(res.error || 'Failed to publish. Please try again.');
+        setProcessingId('');
+        return;
+      }
+
+      showToast({
+        type: 'success',
+        message: 'Approved & Published!',
+        sub: `"${row.title}" is now live in ${res.label}`,
+      });
+
+      await queue.reload();
+      await refreshCounts();
+    } catch (err) {
+      setActionError(err?.message || 'Error publishing submission');
+    } finally {
+      setProcessingId('');
+    }
+  }
+
+  // Handle standard reject or mark handled
   async function resolve(row, status, action) {
     setActionError('');
-    let nextStatus = status;
-    if (nextStatus === 'handled') {
-      nextStatus = 'approved';
+    setProcessingId(row.id);
+    try {
+      let nextStatus = status;
+      if (nextStatus === 'handled') {
+        // When marking handled, also publish the submission so it shows in the public directory!
+        const pubRes = await publishSubmission(row, user);
+        if (!pubRes.success) {
+          setActionError(pubRes.error || 'Could not publish');
+          setProcessingId('');
+          return;
+        }
+        showToast({
+          type: 'success',
+          message: 'Published to Directory',
+          sub: `"${row.title}" is now live`,
+        });
+        await queue.reload();
+        await refreshCounts();
+        setProcessingId('');
+        return;
+      }
+
+      const { error } = await adminMutate({
+        action: 'update',
+        table: 'submissions',
+        id: row.id,
+        data: { status: nextStatus },
+      });
+      if (error) {
+        setActionError(error.message || 'Could not save. Please try again.');
+        setProcessingId('');
+        return;
+      }
+      await logAudit(user, { action, table: 'submissions', rowId: row.id, note: row.title });
+      await queue.reload();
+      await refreshCounts();
+    } catch (err) {
+      setActionError(err?.message || 'Error processing submission');
+    } finally {
+      setProcessingId('');
     }
-    const { error } = await adminMutate({
-      action: 'update',
-      table: 'submissions',
-      id: row.id,
-      data: { status: nextStatus },
-    });
-    if (error) return setActionError(error.message || 'Could not save. Please try again.');
-    await logAudit(user, { action, table: 'submissions', rowId: row.id, note: row.title });
-    queue.reload();
   }
+
+  // Sync any submissions that were marked approved/handled in the past but missing from live directory tables
+  const syncApprovedSubmissions = useCallback(async (manual = false) => {
+    setSyncing(true);
+    setSyncMsg('');
+    try {
+      // 1. Fetch all submissions marked approved or handled
+      const { data: approvedSubs } = await supabase
+        .from('submissions')
+        .select('*')
+        .or('status.eq.approved,status.eq.handled');
+
+      if (!approvedSubs || approvedSubs.length === 0) {
+        if (manual) showToast({ type: 'info', message: 'All inputs up to date', sub: 'No unpublished submissions found' });
+        setSyncing(false);
+        return;
+      }
+
+      // 2. Fetch live listings, donors, announcements
+      const [listingsRes, donorsRes, announceRes] = await Promise.all([
+        supabase.from('listings').select('title, phone'),
+        supabase.from('donors').select('name, phone'),
+        supabase.from('announcements').select('title'),
+      ]);
+
+      const liveListingsTitles = new Set((listingsRes.data || []).map((l) => (l.title || '').trim().toLowerCase()));
+      const liveDonorsNames = new Set((donorsRes.data || []).map((d) => (d.name || '').trim().toLowerCase()));
+      const liveAnnounceTitles = new Set((announceRes.data || []).map((a) => (a.title || '').trim().toLowerCase()));
+
+      let publishedCount = 0;
+      for (const sub of approvedSubs) {
+        if (sub.type === 'removal' || sub.type === 'correction') continue;
+        const sec = getSubmissionSection(sub);
+        const subTitle = (sub.title || '').trim().toLowerCase();
+
+        let exists = false;
+        if (sec === 'donors') {
+          const cleanName = subTitle.replace(/\s*\([A-Za-z0-9+-\s]+\)/i, '').trim();
+          exists = liveDonorsNames.has(cleanName) || liveDonorsNames.has(subTitle);
+        } else if (sec === 'announcements') {
+          exists = liveAnnounceTitles.has(subTitle);
+        } else {
+          exists = liveListingsTitles.has(subTitle);
+        }
+
+        if (!exists && subTitle.length >= 2) {
+          const pubRes = await publishSubmission(sub, user);
+          if (pubRes.success) {
+            publishedCount++;
+            if (sec === 'donors') liveDonorsNames.add(subTitle);
+            else if (sec === 'announcements') liveAnnounceTitles.add(subTitle);
+            else liveListingsTitles.add(subTitle);
+          }
+        }
+      }
+
+      if (publishedCount > 0) {
+        showToast({
+          type: 'success',
+          message: `${publishedCount} approved ${publishedCount === 1 ? 'input' : 'inputs'} published!`,
+          sub: 'Now visible in public directory listings',
+        });
+        setSyncMsg(`✓ Successfully published ${publishedCount} previously reviewed ${publishedCount === 1 ? 'input' : 'inputs'} into the directory.`);
+        await refreshCounts();
+      } else if (manual) {
+        showToast({
+          type: 'info',
+          message: 'All approved inputs are live',
+          sub: 'No missing entries found',
+        });
+        setSyncMsg('All previously reviewed inputs are already live in the directory.');
+      }
+    } catch (err) {
+      console.warn('[syncApprovedSubmissions error]', err);
+    } finally {
+      setSyncing(false);
+    }
+  }, [user, refreshCounts]);
+
+  // Run auto-sync once on mount to recover any un-migrated approved inputs
+  useEffect(() => {
+    syncApprovedSubmissions(false);
+  }, [syncApprovedSubmissions]);
 
   return (
     <div className="page">
@@ -96,8 +242,29 @@ export default function AdminHome() {
         </div>
       </header>
       <main className="body">
-        <h2>Waiting for review <span className="badge">{waiting.length}</span></h2>
-        <p className="muted">Removal requests come first. Aim to answer within 48 hours.</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <h2 style={{ margin: 0 }}>Waiting for review <span className="badge">{waiting.length}</span></h2>
+          <button
+            type="button"
+            className="btn light"
+            onClick={() => syncApprovedSubmissions(true)}
+            disabled={syncing}
+            style={{ fontSize: 13, padding: '4px 10px', minHeight: 32 }}
+            title="Ensures all approved submissions are published into the live directory"
+          >
+            {syncing ? 'Syncing...' : '🔄 Sync Approved Inputs'}
+          </button>
+        </div>
+        <p className="muted" style={{ marginTop: 4 }}>
+          Approval instantly publishes the item to the live public directory.
+        </p>
+
+        {syncMsg ? (
+          <div className="card" style={{ padding: '10px 14px', background: 'var(--accent-tint)', borderColor: 'var(--accent-border)', fontSize: 13, color: 'var(--ink)' }}>
+            {syncMsg}
+          </div>
+        ) : null}
+
         {queue.error ? <p className="error">{queue.error}</p> : null}
         {actionError ? <p className="error">{actionError}</p> : null}
         {waiting.length === 0 && !queue.loading ? <p className="muted">Nothing is waiting. Nice.</p> : null}
@@ -105,6 +272,7 @@ export default function AdminHome() {
           const sec = getSubmissionSection(r);
           const urgent = r.type === 'removal';
           const label = getSubmissionLabel(r);
+          const isBusy = processingId === r.id;
           return (
             <article key={r.id} className={`card ${urgent ? 'dark' : ''}`}>
               <div className="cardhead">
@@ -123,21 +291,56 @@ export default function AdminHome() {
                   ].filter(Boolean).join(' · ');
                 })()}
               </p>
-              <div className="btnrow">
-                {sec ? (
-                  <Link className={`btn ${urgent ? 'light' : 'dark'}`} href={`/admin/${sec}/new?from=${r.id}`}>Edit and approve</Link>
-                ) : (
+              <div className="btnrow" style={{ marginTop: 10, flexWrap: 'wrap', gap: 8 }}>
+                {!urgent ? (
                   <>
-                    <Link className="btn light" href={`/admin/shops?q=${encodeURIComponent(r.title)}`}>Find in shops</Link>
-                    <Link className="btn light" href={`/admin/contacts?q=${encodeURIComponent(r.title)}`}>Find in contacts</Link>
+                    <button
+                      type="button"
+                      className="btn dark"
+                      onClick={() => handleApproveAndPublish(r)}
+                      disabled={isBusy}
+                      style={{ fontWeight: 700 }}
+                    >
+                      {isBusy ? 'Publishing...' : '✓ Approve & Publish'}
+                    </button>
+                    {sec ? (
+                      <Link className="btn light" href={`/admin/${sec}/new?from=${r.id}`}>
+                        Edit details
+                      </Link>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => resolve(r, 'rejected', 'reject submission')}
+                      disabled={isBusy}
+                    >
+                      Reject
+                    </button>
                   </>
-                )}
-                {sec ? (
-                  <button type="button" className="btn" onClick={() => resolve(r, 'rejected', 'reject submission')}>Reject</button>
                 ) : (
                   <>
-                    <button type="button" className="btn" onClick={() => resolve(r, 'handled', 'mark handled')}>Mark handled</button>
-                    <button type="button" className="btn" onClick={() => resolve(r, 'rejected', 'decline request')}>Decline</button>
+                    <Link className="btn light" href={`/admin/shops?q=${encodeURIComponent(r.title)}`}>
+                      Find in shops
+                    </Link>
+                    <Link className="btn light" href={`/admin/contacts?q=${encodeURIComponent(r.title)}`}>
+                      Find in contacts
+                    </Link>
+                    <button
+                      type="button"
+                      className="btn light"
+                      onClick={() => resolve(r, 'handled', 'mark handled')}
+                      disabled={isBusy}
+                    >
+                      Mark handled
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => resolve(r, 'rejected', 'decline request')}
+                      disabled={isBusy}
+                    >
+                      Decline
+                    </button>
                   </>
                 )}
               </div>

@@ -6,6 +6,7 @@ import PageHeader from '../../components/PageHeader';
 import { sendSubmission } from '../../lib/submit';
 import { BLOOD_GROUPS } from '../../lib/sections';
 import { useIsAdmin } from '../../lib/useAdmin';
+import { useRows } from '../../lib/useRows';
 
 const MENUS = [
   {
@@ -207,16 +208,46 @@ function ShareFormInner() {
 
   const activeMenu = availableMenus.find((m) => m.type === type) || availableMenus[0] || MENUS[0];
 
-  // For normal users, hide unclassified "Other ..." category chips
+  // DB categories created by admins available for selection
+  const cats = useRows((s) => s.from('categories').select('*').order('name'), []);
+
+  // For normal users, hide unclassified "Other ..." category chips and only allow picking existing categories
   const activeChips = useMemo(() => {
-    if (!activeMenu.chips) return [];
-    if (isAdmin) return activeMenu.chips;
-    return activeMenu.chips.filter((c) => {
+    const list = [...(activeMenu.chips || [])];
+
+    // Merge database categories created by admins for this section
+    if (type !== 'donor' && cats.rows && cats.rows.length > 0) {
+      const typeKindMap = {
+        transport: ['transport'],
+        business: ['business', 'shop'],
+        worker: ['worker'],
+        contact: ['contact', 'education'],
+      };
+      const validKinds = typeKindMap[type] || [];
+      const dbCats = cats.rows.filter((c) => validKinds.includes(c.kind));
+      for (const dc of dbCats) {
+        const cleanName = dc.name?.trim();
+        if (!cleanName) continue;
+        const exists = list.some((item) =>
+          (item.id || '').toLowerCase().includes(cleanName.toLowerCase()) ||
+          cleanName.toLowerCase().includes((item.id || '').toLowerCase())
+        );
+        if (!exists) {
+          list.push({
+            id: `[CAT_ID: ${dc.id}] ${cleanName}${dc.name_ml ? ' · ' + dc.name_ml : ''}`,
+            label: `🏷️ ${cleanName}${dc.name_ml ? ' (' + dc.name_ml + ')' : ''}`,
+          });
+        }
+      }
+    }
+
+    if (isAdmin) return list;
+    return list.filter((c) => {
       const id = (c.id || '').toLowerCase();
       const label = (c.label || '').toLowerCase();
       return !id.startsWith('other') && !label.startsWith('other') && !id.includes('other ') && !label.includes('other ');
     });
-  }, [activeMenu, isAdmin]);
+  }, [activeMenu, isAdmin, cats.rows, type]);
 
   // Specific form states
   const [selectedChip, setSelectedChip] = useState('');

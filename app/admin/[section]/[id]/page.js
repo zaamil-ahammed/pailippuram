@@ -132,19 +132,30 @@ export default function AdminEdit() {
       }
       const from = new URLSearchParams(window.location.search).get('from');
       if (from) {
-        const { data } = await supabase.from('submissions').select('*').eq('id', from).maybeSingle();
-        if (data) {
+        let subData = null;
+        try {
+          const { data } = await supabase.from('submissions').select('*').eq('id', from).maybeSingle();
+          if (data) subData = data;
+        } catch {}
+        if (!subData && typeof window !== 'undefined') {
+          try {
+            const { memoryStore } = await import('../../../../lib/mockStore');
+            const localSubs = memoryStore.getTable('submissions');
+            subData = localSubs.find((s) => String(s.id) === String(from));
+          } catch {}
+        }
+        if (subData) {
           setFromId(from);
-          const allNums = extractAllPhones(data);
+          const allNums = extractAllPhones(subData);
           if (allNums.length > 1) {
             setExtraPhones(allNums.slice(1));
           } else {
             setExtraPhones([]);
           }
-          const pre = cfg.fromSubmission(data);
+          const pre = cfg.fromSubmission(subData);
           if (cfg.table === 'announcements') {
-            const cleanBody = cleanAnnouncementBody(data.description);
-            const cleanTitle = cleanAnnouncementTitle(data.title);
+            const cleanBody = cleanAnnouncementBody(subData.description);
+            const cleanTitle = cleanAnnouncementTitle(subData.title);
             return setValues({
               ...blank,
               title: cleanTitle,
@@ -363,10 +374,12 @@ export default function AdminEdit() {
       }
       await logAudit(user, { action: isNew ? 'create' : 'edit', table: cfg.table, rowId, note: note || null, changes });
       if (fromId) {
-        let { error: subErr } = await supabase.from('submissions').update({ status: 'approved' }).eq('id', fromId);
-        if (subErr && subErr.message && subErr.message.includes('status_check')) {
-          await supabase.from('submissions').update({ status: 'approved' }).eq('id', fromId);
-        }
+        await adminMutate({
+          action: 'update',
+          table: 'submissions',
+          id: fromId,
+          data: { status: 'approved' },
+        });
         await logAudit(user, { action: 'approve submission', table: 'submissions', rowId: fromId, note: `published as ${cfg.singular}` });
       }
     } catch (auditErr) {
