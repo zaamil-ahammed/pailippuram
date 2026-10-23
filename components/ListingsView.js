@@ -9,6 +9,31 @@ import {
   matchListingToCategory,
 } from '../lib/taxonomy';
 
+// Classifies any listing record into its primary community collection type
+export function getListingCollection(item) {
+  const k = (item.kind || '').toLowerCase();
+  const d = (item.description || '').toLowerCase();
+  if (k === 'contact') {
+    return { key: 'contacts', label: 'Emergency Contacts', badge: '🚨 Emergency Contact', icon: '🚨' };
+  }
+  if (k === 'worker' || d.includes('[worker]')) {
+    return { key: 'workers', label: 'Workers', badge: '🛠️ Worker', icon: '🛠️' };
+  }
+  if (
+    k === 'transport' ||
+    d.includes('[transport]') ||
+    d.includes('auto') ||
+    d.includes('taxi') ||
+    d.includes('jcb') ||
+    d.includes('tipper') ||
+    d.includes('pickup') ||
+    d.includes('service')
+  ) {
+    return { key: 'services', label: 'Services', badge: '🚗 Service', icon: '🚗' };
+  }
+  return { key: 'shops', label: 'Shops', badge: '🏪 Shop', icon: '🏪' };
+}
+
 // Shared by Important contacts, Local shops, Native workers, and Transportation pages.
 export default function ListingsView({
   kind,
@@ -23,6 +48,7 @@ export default function ListingsView({
   const [term, setTerm] = useState('');
   const [cat, setCat] = useState('');
   const [catFilter, setCatFilter] = useState('');
+  const [collectionFilter, setCollectionFilter] = useState('all');
 
   // Read URL query parameters
   useEffect(() => {
@@ -30,6 +56,7 @@ export default function ListingsView({
     const params = new URLSearchParams(window.location.search);
     const qParam = params.get('q') || '';
     const catParam = params.get('cat') || '';
+    const colParam = params.get('collection') || params.get('section') || '';
     if (qParam) {
       setTyped(qParam);
       setTerm(qParam);
@@ -37,58 +64,58 @@ export default function ListingsView({
     if (catParam) {
       setCat(catParam);
     }
+    if (colParam && ['shops', 'workers', 'services', 'contacts', 'all'].includes(colParam)) {
+      setCollectionFilter(colParam);
+    }
   }, []);
 
-  // Fetch all approved listings for this kind
+  // Determine this page's default collection type based on kind
+  const defaultCollectionKey = useMemo(() => {
+    if (kind === 'worker') return 'workers';
+    if (kind === 'transport') return 'services';
+    if (kind === 'contact') return 'contacts';
+    return 'shops';
+  }, [kind]);
+
+  // Fetch all approved listings across all collection types so searching covers the entire directory
   const { rows: rawRows, loading, error } = useRows(
-    (s) => {
-      let q = s.from('listings').select('*, categories(name, name_ml)').eq('status', 'approved').order('title');
-      if (kind === 'transport') {
-        q = q.or(
-          'kind.eq.transport,description.ilike.%[TRANSPORT]%,description.ilike.%auto%,description.ilike.%taxi%,description.ilike.%jcb%,description.ilike.%tipper%,description.ilike.%pickup%'
-        );
-      } else if (kind === 'worker') {
-        q = q.or('kind.eq.worker,description.ilike.%[WORKER]%');
-      } else if (kind === 'business' || kind === 'shop') {
-        q = q.or('kind.eq.business,kind.eq.shop');
-      } else {
-        q = q.eq('kind', kind);
-      }
-      return q;
-    },
-    [kind]
+    (s) => s.from('listings').select('*, categories(name, name_ml)').eq('status', 'approved').order('title'),
+    []
   );
 
-  // In-memory filter so null descriptions are never dropped by PostgREST
-  const allRows = useMemo(() => {
+  // Decorate each row with unified collection classification
+  const allDecoratedRows = useMemo(() => {
     if (!rawRows) return [];
-    if (kind === 'business' || kind === 'shop') {
-      return rawRows.filter((r) => {
-        const d = (r.description || '').toLowerCase();
-        const k = (r.kind || '').toLowerCase();
-        if (k === 'worker' || d.includes('[worker]')) return false;
-        if (k === 'transport' || d.includes('[transport]')) return false;
-        return true;
-      });
-    }
-    return rawRows;
-  }, [rawRows, kind]);
+    return rawRows.map((r) => {
+      const col = getListingCollection(r);
+      return {
+        ...r,
+        collectionKey: col.key,
+        collectionLabel: col.label,
+        collectionBadge: col.badge,
+      };
+    });
+  }, [rawRows]);
 
-  // Fetch registered DB categories
+  // Section-scoped rows when not actively searching across collections
+  const sectionRows = useMemo(() => {
+    return allDecoratedRows.filter((r) => r.collectionKey === defaultCollectionKey);
+  }, [allDecoratedRows, defaultCollectionKey]);
+
+  // Fetch registered DB categories for this section
   const cats = useRows(
     (s) => {
       if (kind === 'business' || kind === 'shop') {
         return s.from('categories').select('*').or('kind.eq.business,kind.eq.shop').order('name');
       }
-      return s.from('categories').select('*').eq('kind', kind).order('name');
+      return s.from('categories').select('*').eq('kind', kind || 'business').order('name');
     },
     [kind]
   );
 
-  // "only show categories with atleast one to show":
-  // Gather all category candidates from taxonomy & DB, and filter to ONLY those with count >= 1
+  // Categories available for the current section
   const availableCategories = useMemo(() => {
-    if (!allRows || allRows.length === 0) return [];
+    if (!sectionRows || sectionRows.length === 0) return [];
 
     const candidates = [];
     const seen = new Set();
@@ -138,9 +165,8 @@ export default function ListingsView({
       }
     });
 
-    // Filter to strictly keep categories with AT LEAST ONE matching listing
-    return filterCategoriesWithListings(candidates, allRows);
-  }, [allRows, cats.rows, kind, sectionKey, fallbackCategories]);
+    return filterCategoriesWithListings(candidates, sectionRows);
+  }, [sectionRows, cats.rows, kind, sectionKey, fallbackCategories]);
 
   // Filter available categories if user searches within category chips
   const filteredCategoryChips = useMemo(() => {
@@ -151,9 +177,74 @@ export default function ListingsView({
     );
   }, [availableCategories, catFilter]);
 
-  // Filter listings based on active category and search term
+  // Dynamic counts for each collection type matching current search term
+  const collectionCounts = useMemo(() => {
+    const t = term.trim().toLowerCase();
+    const counts = { all: 0, shops: 0, workers: 0, services: 0, contacts: 0 };
+    const tDigits = t.replace(/\D/g, '');
+
+    for (const item of allDecoratedRows) {
+      let matchesSearch = true;
+      if (t) {
+        const title = (item.title || '').toLowerCase();
+        const area = (item.area || '').toLowerCase();
+        const desc = (item.description || item.detail || '').toLowerCase();
+        const catName = (item.categories?.name || '').toLowerCase();
+        const phone = (item.phone || '').replace(/\D/g, '');
+        matchesSearch =
+          title.includes(t) ||
+          area.includes(t) ||
+          desc.includes(t) ||
+          catName.includes(t) ||
+          (tDigits && phone.includes(tDigits));
+      }
+      if (matchesSearch) {
+        counts.all++;
+        if (counts[item.collectionKey] !== undefined) {
+          counts[item.collectionKey]++;
+        }
+      }
+    }
+    return counts;
+  }, [allDecoratedRows, term]);
+
+  // Filter listings based on active search across all collections or local section
   const displayedRows = useMemo(() => {
-    let list = allRows;
+    const t = term.trim().toLowerCase();
+
+    // 1. When a search term is present: Filter across ALL collection types (Shops, Workers, Services, Emergency Contacts)
+    if (t) {
+      let list = allDecoratedRows;
+
+      // Filter by selected collection tab if user narrowed down
+      if (collectionFilter !== 'all') {
+        list = list.filter((item) => item.collectionKey === collectionFilter);
+      }
+
+      // Filter by text search
+      const tDigits = t.replace(/\D/g, '');
+      list = list.filter((item) => {
+        const title = (item.title || '').toLowerCase();
+        const area = (item.area || '').toLowerCase();
+        const desc = (item.description || item.detail || '').toLowerCase();
+        const catName = (item.categories?.name || '').toLowerCase();
+        const phone = (item.phone || '').replace(/\D/g, '');
+        return (
+          title.includes(t) ||
+          area.includes(t) ||
+          desc.includes(t) ||
+          catName.includes(t) ||
+          (tDigits && phone.includes(tDigits))
+        );
+      });
+
+      return list;
+    }
+
+    // 2. When not searching: Show either the default section or user-selected collection tab
+    let list = collectionFilter === 'all'
+      ? sectionRows
+      : allDecoratedRows.filter((r) => r.collectionKey === collectionFilter);
 
     // Filter by selected category if any
     if (cat) {
@@ -167,20 +258,8 @@ export default function ListingsView({
       }
     }
 
-    // Filter by text search
-    const t = term.trim().toLowerCase();
-    if (t) {
-      list = list.filter((item) => {
-        const title = (item.title || '').toLowerCase();
-        const area = (item.area || '').toLowerCase();
-        const desc = (item.description || item.detail || '').toLowerCase();
-        const catName = (item.categories?.name || '').toLowerCase();
-        return title.includes(t) || area.includes(t) || desc.includes(t) || catName.includes(t);
-      });
-    }
-
     return list;
-  }, [allRows, cat, term, availableCategories]);
+  }, [allDecoratedRows, sectionRows, cat, term, collectionFilter, availableCategories]);
 
   // Auto-scroll and highlight if shared via direct link (?id=... or #item-...)
   useEffect(() => {
@@ -203,6 +282,8 @@ export default function ListingsView({
     }
   }, [loading, displayedRows]);
 
+  const isSearching = Boolean(term.trim());
+
   return (
     <div className="page">
       <PageHeader title={title} ml={ml}>
@@ -211,28 +292,113 @@ export default function ListingsView({
             e.preventDefault();
             setTerm(typed);
           }}
+          style={{ position: 'relative' }}
         >
           <label htmlFor="q" className="hp">Search</label>
           <input
             id="q"
             type="search"
-            placeholder="Search by name, category, or area..."
+            placeholder="Search across Shops, Workers, Services, Emergency Contacts..."
             value={typed}
             onChange={(e) => {
               setTyped(e.target.value);
-              // live search filter
               setTerm(e.target.value);
             }}
+            style={{ paddingRight: typed ? 36 : 14 }}
           />
+          {typed && (
+            <button
+              type="button"
+              onClick={() => {
+                setTyped('');
+                setTerm('');
+                setCollectionFilter('all');
+              }}
+              style={{
+                position: 'absolute',
+                right: 10,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'rgba(0,0,0,0.06)',
+                border: 'none',
+                borderRadius: '50%',
+                width: 24,
+                height: 24,
+                fontSize: 13,
+                fontWeight: 700,
+                color: 'var(--ink)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="Clear search"
+            >
+              &times;
+            </button>
+          )}
         </form>
       </PageHeader>
 
       <main className="body">
         {top}
-        {intro ? <p className="muted">{intro}</p> : null}
+        {intro && !isSearching ? <p className="muted">{intro}</p> : null}
 
-        {/* Categories Section: ONLY SHOW CATEGORIES WITH AT LEAST ONE LISTING */}
-        {availableCategories.length > 0 && (
+        {/* Collection Type Tabs: Shows all collections (Shops, Workers, Services, Emergency Contacts) */}
+        {isSearching && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Filter Collections ({collectionCounts.all} found)
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--ink-muted)' }}>
+                Searching all directory records
+              </span>
+            </div>
+            <div className="chips" style={{ gap: 6, flexWrap: 'wrap' }}>
+              {[
+                { id: 'all', label: 'All Collections', count: collectionCounts.all, icon: '🔍' },
+                { id: 'shops', label: 'Shops', count: collectionCounts.shops, icon: '🏪' },
+                { id: 'workers', label: 'Workers', count: collectionCounts.workers, icon: '🛠️' },
+                { id: 'services', label: 'Services', count: collectionCounts.services, icon: '🚗' },
+                { id: 'contacts', label: 'Emergency Contacts', count: collectionCounts.contacts, icon: '🚨' },
+              ].map((c) => {
+                const isSelected = collectionFilter === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`chip ${isSelected ? 'on' : ''}`}
+                    onClick={() => setCollectionFilter(c.id)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: 13,
+                      fontWeight: isSelected ? 700 : 500,
+                    }}
+                  >
+                    <span>{c.icon} {c.label}</span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: 10,
+                        background: isSelected ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)',
+                      }}
+                    >
+                      {c.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Categories Section: Shown when browsing section items */}
+        {!isSearching && availableCategories.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -261,7 +427,7 @@ export default function ListingsView({
                 className={`chip ${cat === '' ? 'on' : ''}`}
                 onClick={() => setCat('')}
               >
-                All ({allRows.length})
+                All ({sectionRows.length})
               </button>
               {filteredCategoryChips.map((c) => {
                 const isSelected = cat === c.id || cat === c.name;
@@ -297,17 +463,18 @@ export default function ListingsView({
         {/* Results summary / status */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)' }}>
-            Showing {displayedRows.length} {displayedRows.length === 1 ? 'item' : 'items'}
+            Showing {displayedRows.length} {displayedRows.length === 1 ? 'record' : 'records'}
             {cat ? ' in selected category' : ''}
-            {term ? ` matching "${term}"` : ''}
+            {isSearching ? ` matching "${term}" across directory` : ''}
           </span>
-          {(cat || term) && (
+          {(cat || term || collectionFilter !== 'all') && (
             <button
               type="button"
               onClick={() => {
                 setCat('');
                 setTerm('');
                 setTyped('');
+                setCollectionFilter('all');
               }}
               style={{
                 background: 'none',
@@ -325,14 +492,14 @@ export default function ListingsView({
         </div>
 
         {error ? <p className="error">{error}</p> : null}
-        {loading ? <p className="muted">Loading...</p> : null}
+        {loading ? <p className="muted">Loading directory...</p> : null}
         {!loading && !error && displayedRows.length === 0 ? (
           <div className="card" style={{ textAlign: 'center', padding: '32px 20px', gap: 12 }}>
             <p style={{ fontSize: 16, fontWeight: 700 }}>Nothing found</p>
             <p className="muted">
               {term
-                ? `No listings matched "${term}". Try checking your spelling or clearing filters.`
-                : 'No approved listings are currently in this category. You can be the first to share one!'}
+                ? `No records across Shops, Workers, Services, or Emergency Contacts matched "${term}".`
+                : 'No approved records found in this category.'}
             </p>
             <div>
               <button
@@ -342,9 +509,10 @@ export default function ListingsView({
                   setCat('');
                   setTerm('');
                   setTyped('');
+                  setCollectionFilter('all');
                 }}
               >
-                Show all {title}
+                Clear search and filters
               </button>
             </div>
           </div>

@@ -17,7 +17,17 @@ import { shareServiceOrApp } from '../../lib/share';
 function DirectorySearchContent() {
   const searchParams = useSearchParams();
   const initialQ = searchParams.get('q') || '';
-  const initialSection = searchParams.get('section') || searchParams.get('kind') || 'all';
+  const rawInitialSection = searchParams.get('section') || searchParams.get('kind') || 'all';
+  const initialSection =
+    rawInitialSection === 'transport'
+      ? 'services'
+      : rawInitialSection === 'contact'
+      ? 'contacts'
+      : rawInitialSection === 'worker'
+      ? 'workers'
+      : rawInitialSection === 'shop' || rawInitialSection === 'business'
+      ? 'shops'
+      : rawInitialSection;
 
   const [q, setQ] = useState(initialQ);
   const [selectedSection, setSelectedSection] = useState(initialSection);
@@ -103,7 +113,7 @@ function DirectorySearchContent() {
   const allItems = useMemo(() => {
     const list = [];
 
-    // 1. Listings (Shops, Contacts, Workers, Transport)
+    // 1. Listings (Shops, Contacts, Workers, Services)
     for (const r of listings) {
       let sec = 'shops';
       let badge = '🏪 Shop';
@@ -112,13 +122,22 @@ function DirectorySearchContent() {
 
       if (kind === 'contact') {
         sec = 'contacts';
-        badge = '🚨 Contact';
+        badge = '🚨 Emergency Contact';
       } else if (kind === 'worker' || d.includes('[worker]')) {
         sec = 'workers';
         badge = '🛠️ Worker';
-      } else if (kind === 'transport' || d.includes('[transport]')) {
-        sec = 'transport';
-        badge = '🚗 Transport';
+      } else if (
+        kind === 'transport' ||
+        d.includes('[transport]') ||
+        d.includes('auto') ||
+        d.includes('taxi') ||
+        d.includes('jcb') ||
+        d.includes('tipper') ||
+        d.includes('pickup') ||
+        d.includes('service')
+      ) {
+        sec = 'services';
+        badge = '🚗 Service';
       } else {
         sec = 'shops';
         badge = '🏪 Shop';
@@ -137,7 +156,7 @@ function DirectorySearchContent() {
         hours: r.hours,
         verified_at: r.verified_at || r.updated_at,
         phones: extractAllPhones(r),
-        shareUrl: `/${sec}?id=${r.id}#item-${r.id}`,
+        shareUrl: `/${sec === 'services' ? 'transport' : sec}?id=${r.id}#item-${r.id}`,
       });
     }
 
@@ -235,6 +254,9 @@ function DirectorySearchContent() {
     const counts = { all: filteredItems.length };
     for (const item of filteredItems) {
       counts[item.section] = (counts[item.section] || 0) + 1;
+      if (item.section === 'services') {
+        counts['transport'] = (counts['transport'] || 0) + 1;
+      }
     }
     return counts;
   }, [filteredItems]);
@@ -242,6 +264,9 @@ function DirectorySearchContent() {
   // Filter by selected section tab
   const displayedItems = useMemo(() => {
     if (selectedSection === 'all') return filteredItems;
+    if (selectedSection === 'transport' || selectedSection === 'services') {
+      return filteredItems.filter((i) => i.section === 'services' || i.section === 'transport');
+    }
     return filteredItems.filter((i) => i.section === selectedSection);
   }, [filteredItems, selectedSection]);
 
@@ -260,11 +285,11 @@ function DirectorySearchContent() {
   };
 
   const SECTIONS_CONFIG = [
-    { id: 'all', label: 'All Results', icon: '🔍' },
+    { id: 'all', label: 'All Collections', icon: '🔍' },
     { id: 'shops', label: 'Shops', icon: '🏪' },
-    { id: 'contacts', label: 'Contacts', icon: '🚨' },
     { id: 'workers', label: 'Workers', icon: '🛠️' },
-    { id: 'transport', label: 'Transport', icon: '🚗' },
+    { id: 'services', label: 'Services', icon: '🚗' },
+    { id: 'contacts', label: 'Emergency Contacts', icon: '🚨' },
     { id: 'donors', label: 'Blood Donors', icon: '🩸' },
     { id: 'bus', label: 'Bus Timing', icon: '🚌' },
     { id: 'panchayath', label: 'Panchayath', icon: '🏛️' },
@@ -282,7 +307,7 @@ function DirectorySearchContent() {
             type="search"
             value={q}
             onChange={(e) => handleQueryChange(e.target.value)}
-            placeholder="Search shops, contacts, workers, transport, bus..."
+            placeholder="Search across Shops, Workers, Services, Emergency Contacts..."
             aria-label="Search directory"
             autoFocus={Boolean(initialQ)}
           />

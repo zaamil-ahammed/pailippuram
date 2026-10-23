@@ -169,7 +169,7 @@ export default function Home() {
           <input
             id="hq"
             type="search"
-            placeholder="Search shops, contacts, workers, transport..."
+            placeholder="Search across Shops, Workers, Services, Emergency Contacts..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />

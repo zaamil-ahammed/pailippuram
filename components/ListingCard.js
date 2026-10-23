@@ -33,8 +33,27 @@ export default function ListingCard({ row }) {
     <article className="card" id={`item-${row.id}`}>
       <div className="cardhead">
         <div>
-          <h3>{row.title}</h3>
-          {subtitle ? <p className="muted">{subtitle}</p> : null}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <h3 style={{ margin: 0 }}>{row.title}</h3>
+            {(row.collectionBadge || row.badge) ? (
+              <span
+                className="pill"
+                style={{
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 6,
+                  background: 'var(--accent-tint, #faf6ee)',
+                  border: '1px solid var(--accent-border, #e8ddc8)',
+                  color: 'var(--ink, #1e293b)',
+                  display: 'inline-block',
+                }}
+              >
+                {row.collectionBadge || row.badge}
+              </span>
+            ) : null}
+          </div>
+          {subtitle ? <p className="muted" style={{ margin: '2px 0 0' }}>{subtitle}</p> : null}
         </div>
         <button
           type="button"
