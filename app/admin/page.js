@@ -20,8 +20,6 @@ export default function AdminHome() {
   const [counts, setCounts] = useState({});
   const [outdated, setOutdated] = useState(0);
   const [processingId, setProcessingId] = useState('');
-  const [syncing, setSyncing] = useState(false);
-  const [syncMsg, setSyncMsg] = useState('');
 
   const [waiting, setWaiting] = useState([]);
   const [loadingQueue, setLoadingQueue] = useState(true);
@@ -176,9 +174,7 @@ export default function AdminHome() {
   }
 
   // Sync any submissions that were marked approved/handled in the past but missing from live directory tables
-  const syncApprovedSubmissions = useCallback(async (manual = false) => {
-    setSyncing(true);
-    setSyncMsg('');
+  const syncApprovedSubmissions = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/submissions', {
         method: 'POST',
@@ -186,28 +182,16 @@ export default function AdminHome() {
         body: JSON.stringify({ action: 'sync' }),
       });
       const data = await res.json();
-      if (res.ok && data.success) {
-        if (data.publishedCount > 0) {
-          showToast({
-            type: 'success',
-            message: `${data.publishedCount} approved inputs published!`,
-            sub: 'Now visible in public directory listings',
-          });
-          setSyncMsg(`✓ Successfully published ${data.publishedCount} approved inputs to the directory.`);
-          await refreshCounts();
-        } else if (manual) {
-          showToast({
-            type: 'info',
-            message: 'All approved inputs are live',
-            sub: 'No missing entries found',
-          });
-          setSyncMsg('All previously reviewed inputs are already live in the directory.');
-        }
+      if (res.ok && data.success && data.publishedCount > 0) {
+        showToast({
+          type: 'success',
+          message: `${data.publishedCount} approved inputs published!`,
+          sub: 'Now visible in public directory listings',
+        });
+        await refreshCounts();
       }
     } catch (err) {
       console.warn('[syncApprovedSubmissions error]', err);
-    } finally {
-      setSyncing(false);
     }
   }, [refreshCounts]);
 
@@ -237,23 +221,20 @@ export default function AdminHome() {
           <button
             type="button"
             className="btn light"
-            onClick={() => syncApprovedSubmissions(true)}
-            disabled={syncing}
+            onClick={async () => {
+              await Promise.all([loadQueue(), refreshCounts()]);
+              showToast({ type: 'info', message: 'Queue updated', sub: `${waiting.length} pending review` });
+            }}
+            disabled={loadingQueue}
             style={{ fontSize: 13, padding: '4px 10px', minHeight: 32 }}
-            title="Ensures all approved submissions are published into the live directory"
+            title="Refresh waiting submissions"
           >
-            {syncing ? 'Syncing...' : '🔄 Sync Approved Inputs'}
+            {loadingQueue ? 'Checking...' : '🔄 Refresh Queue'}
           </button>
         </div>
         <p className="muted" style={{ marginTop: 4 }}>
           Approval instantly publishes the item to the live public directory.
         </p>
-
-        {syncMsg ? (
-          <div className="card" style={{ padding: '10px 14px', background: 'var(--accent-tint)', borderColor: 'var(--accent-border)', fontSize: 13, color: 'var(--ink)' }}>
-            {syncMsg}
-          </div>
-        ) : null}
 
         {queueError ? <p className="error">{queueError}</p> : null}
         {actionError ? <p className="error">{actionError}</p> : null}
