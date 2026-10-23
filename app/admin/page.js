@@ -23,10 +23,34 @@ export default function AdminHome() {
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
 
-  const queue = useRows((s) => s.from('submissions').select('*').eq('status', 'pending').order('created_at', { ascending: false }), []);
-  const waiting = Array.isArray(queue.rows)
-    ? [...queue.rows].sort((a, b) => (b.type === 'removal') - (a.type === 'removal'))
-    : [];
+  const [waiting, setWaiting] = useState([]);
+  const [loadingQueue, setLoadingQueue] = useState(true);
+  const [queueError, setQueueError] = useState('');
+
+  const loadQueue = useCallback(async () => {
+    setLoadingQueue(true);
+    setQueueError('');
+    try {
+      const res = await fetch('/api/admin/submissions');
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const sorted = Array.isArray(data.submissions)
+          ? [...data.submissions].sort((a, b) => (b.type === 'removal') - (a.type === 'removal'))
+          : [];
+        setWaiting(sorted);
+      } else {
+        setQueueError(data.error || 'Could not load pending submissions.');
+      }
+    } catch {
+      setQueueError('Could not connect to server.');
+    } finally {
+      setLoadingQueue(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadQueue();
+  }, [loadQueue]);
 
   const refreshCounts = useCallback(async () => {
     try {
@@ -75,9 +99,14 @@ export default function AdminHome() {
     setActionError('');
     setProcessingId(row.id);
     try {
-      const res = await publishSubmission(row, user);
-      if (!res.success) {
-        setActionError(res.error || 'Failed to publish. Please try again.');
+      const res = await fetch('/api/admin/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approve', id: row.id, submission: row }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setActionError(data.error || 'Failed to publish. Please try again.');
         setProcessingId('');
         return;
       }
@@ -85,10 +114,10 @@ export default function AdminHome() {
       showToast({
         type: 'success',
         message: 'Approved & Published!',
-        sub: `"${row.title}" is now live in ${res.label}`,
+        sub: `"${row.title}" is now live in ${data.label || 'directory'}`,
       });
 
-      await queue.reload();
+      setWaiting((prev) => prev.filter((item) => String(item.id) !== String(row.id)));
       await refreshCounts();
     } catch (err) {
       setActionError(err?.message || 'Error publishing submission');
@@ -102,39 +131,42 @@ export default function AdminHome() {
     setActionError('');
     setProcessingId(row.id);
     try {
-      let nextStatus = status;
-      if (nextStatus === 'handled') {
-        // When marking handled, also publish the submission so it shows in the public directory!
-        const pubRes = await publishSubmission(row, user);
-        if (!pubRes.success) {
-          setActionError(pubRes.error || 'Could not publish');
+      if (status === 'handled') {
+        const res = await fetch('/api/admin/submissions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'approve', id: row.id, submission: row }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setActionError(data.error || 'Could not publish');
           setProcessingId('');
           return;
         }
         showToast({
           type: 'success',
           message: 'Published to Directory',
-          sub: `"${row.title}" is now live`,
+          sub: `"${row.title}" is now live in directory`,
         });
-        await queue.reload();
+        setWaiting((prev) => prev.filter((item) => String(item.id) !== String(row.id)));
         await refreshCounts();
         setProcessingId('');
         return;
       }
 
-      const { error } = await adminMutate({
-        action: 'update',
-        table: 'submissions',
-        id: row.id,
-        data: { status: nextStatus },
+      const res = await fetch('/api/admin/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reject', id: row.id }),
       });
-      if (error) {
-        setActionError(error.message || 'Could not save. Please try again.');
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setActionError(data.error || 'Could not save. Please try again.');
         setProcessingId('');
         return;
       }
       await logAudit(user, { action, table: 'submissions', rowId: row.id, note: row.title });
-      await queue.reload();
+      setWaiting((prev) => prev.filter((item) => String(item.id) !== String(row.id)));
       await refreshCounts();
     } catch (err) {
       setActionError(err?.message || 'Error processing submission');
@@ -148,78 +180,36 @@ export default function AdminHome() {
     setSyncing(true);
     setSyncMsg('');
     try {
-      // 1. Fetch all submissions marked approved or handled
-      const { data: approvedSubs } = await supabase
-        .from('submissions')
-        .select('*')
-        .or('status.eq.approved,status.eq.handled');
-
-      if (!approvedSubs || approvedSubs.length === 0) {
-        if (manual) showToast({ type: 'info', message: 'All inputs up to date', sub: 'No unpublished submissions found' });
-        setSyncing(false);
-        return;
-      }
-
-      // 2. Fetch live listings, donors, announcements
-      const [listingsRes, donorsRes, announceRes] = await Promise.all([
-        supabase.from('listings').select('title, phone'),
-        supabase.from('donors').select('name, phone'),
-        supabase.from('announcements').select('title'),
-      ]);
-
-      const liveListingsTitles = new Set((listingsRes.data || []).map((l) => (l.title || '').trim().toLowerCase()));
-      const liveDonorsNames = new Set((donorsRes.data || []).map((d) => (d.name || '').trim().toLowerCase()));
-      const liveAnnounceTitles = new Set((announceRes.data || []).map((a) => (a.title || '').trim().toLowerCase()));
-
-      let publishedCount = 0;
-      for (const sub of approvedSubs) {
-        if (sub.type === 'removal' || sub.type === 'correction') continue;
-        const sec = getSubmissionSection(sub);
-        const subTitle = (sub.title || '').trim().toLowerCase();
-
-        let exists = false;
-        if (sec === 'donors') {
-          const cleanName = subTitle.replace(/\s*\([A-Za-z0-9+-\s]+\)/i, '').trim();
-          exists = liveDonorsNames.has(cleanName) || liveDonorsNames.has(subTitle);
-        } else if (sec === 'announcements') {
-          exists = liveAnnounceTitles.has(subTitle);
-        } else {
-          exists = liveListingsTitles.has(subTitle);
+      const res = await fetch('/api/admin/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sync' }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.publishedCount > 0) {
+          showToast({
+            type: 'success',
+            message: `${data.publishedCount} approved inputs published!`,
+            sub: 'Now visible in public directory listings',
+          });
+          setSyncMsg(`✓ Successfully published ${data.publishedCount} approved inputs to the directory.`);
+          await refreshCounts();
+        } else if (manual) {
+          showToast({
+            type: 'info',
+            message: 'All approved inputs are live',
+            sub: 'No missing entries found',
+          });
+          setSyncMsg('All previously reviewed inputs are already live in the directory.');
         }
-
-        if (!exists && subTitle.length >= 2) {
-          const pubRes = await publishSubmission(sub, user);
-          if (pubRes.success) {
-            publishedCount++;
-            if (sec === 'donors') liveDonorsNames.add(subTitle);
-            else if (sec === 'announcements') liveAnnounceTitles.add(subTitle);
-            else liveListingsTitles.add(subTitle);
-          }
-        }
-      }
-
-      if (publishedCount > 0) {
-        showToast({
-          type: 'success',
-          message: `${publishedCount} approved ${publishedCount === 1 ? 'input' : 'inputs'} published!`,
-          sub: 'Now visible in public directory listings',
-        });
-        setSyncMsg(`✓ Successfully published ${publishedCount} previously reviewed ${publishedCount === 1 ? 'input' : 'inputs'} into the directory.`);
-        await refreshCounts();
-      } else if (manual) {
-        showToast({
-          type: 'info',
-          message: 'All approved inputs are live',
-          sub: 'No missing entries found',
-        });
-        setSyncMsg('All previously reviewed inputs are already live in the directory.');
       }
     } catch (err) {
       console.warn('[syncApprovedSubmissions error]', err);
     } finally {
       setSyncing(false);
     }
-  }, [user, refreshCounts]);
+  }, [refreshCounts]);
 
   // Run auto-sync once on mount to recover any un-migrated approved inputs
   useEffect(() => {
@@ -265,9 +255,9 @@ export default function AdminHome() {
           </div>
         ) : null}
 
-        {queue.error ? <p className="error">{queue.error}</p> : null}
+        {queueError ? <p className="error">{queueError}</p> : null}
         {actionError ? <p className="error">{actionError}</p> : null}
-        {waiting.length === 0 && !queue.loading ? <p className="muted">Nothing is waiting. Nice.</p> : null}
+        {waiting.length === 0 && !loadingQueue ? <p className="muted">Nothing is waiting. Nice.</p> : null}
         {waiting.map((r) => {
           const sec = getSubmissionSection(r);
           const urgent = r.type === 'removal';
