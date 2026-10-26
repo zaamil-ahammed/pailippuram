@@ -19,7 +19,7 @@ alter table if exists categories add constraint categories_kind_check check (kin
 
 notify pgrst, 'reload schema';
 
--- ---------- Tables ----------
+-- ---------- Tables --------
 
 create table if not exists categories (
   id serial primary key,
