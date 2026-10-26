@@ -108,7 +108,7 @@ export default function AdminEdit() {
         const { data, error } = await supabase.from(cfg.table).select('*').eq('id', id).maybeSingle();
         if (error || !data) return setMsg('Could not find this item.');
         setOriginal(data);
-        setStatus(data.status || 'approved');
+        setStatus(data.status === 'approved' ? 'approved' : 'hidden');
         const allNums = extractAllPhones(data);
         if (allNums.length > 1) {
           setExtraPhones(allNums.slice(1));
@@ -275,8 +275,10 @@ export default function AdminEdit() {
       delete payload.phone;
     }
 
-    // Status: strictly 'approved' or 'hidden' to satisfy schema check constraints
-    payload.status = status === 'hidden' ? 'hidden' : 'approved';
+    // Status: strictly 'approved' or 'archived'/'hidden' matching remote database constraints
+    payload.status = status === 'hidden'
+      ? (cfg.table === 'listings' || cfg.table === 'announcements' ? 'archived' : 'hidden')
+      : 'approved';
 
     // Announcements specific processing
     if (cfg.table === 'announcements') {

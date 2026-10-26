@@ -64,7 +64,8 @@ export default function AdminList() {
   async function toggleHidden(row) {
     setActionError('');
     const isCurrentlyLive = row.status === 'approved';
-    const nextStatus = isCurrentlyLive ? 'hidden' : 'approved';
+    const hideStatus = (cfg.table === 'listings' || cfg.table === 'announcements') ? 'archived' : 'hidden';
+    const nextStatus = isCurrentlyLive ? hideStatus : 'approved';
     const { error: err } = await adminMutate({
       action: 'update',
       table: cfg.table,
@@ -118,7 +119,7 @@ export default function AdminList() {
       table: cfg.table,
       id: row.id,
     });
-    if (err) return setActionError('Could not delete. Please try again.');
+    if (err) return setActionError(err.message || 'Could not delete. Please try again.');
     await logAudit(user, { action: 'delete', table: cfg.table, rowId: row.id, note: cfg.title(row) });
     showToast({
       type: 'success',
