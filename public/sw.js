@@ -58,3 +58,68 @@ self.addEventListener('fetch', (event) => {
     })()
   );
 });
+
+// Native Web Push notifications
+self.addEventListener('push', (event) => {
+  let data = {
+    title: 'Nammude Pailippuram Alert',
+    body: 'Urgent local announcement posted for Pailippuram community.',
+    url: '/announcements',
+  };
+  try {
+    if (event.data) {
+      data = { ...data, ...event.data.json() };
+    }
+  } catch {
+    if (event.data) {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    data: { url: data.url || '/announcements' },
+    vibrate: [200, 100, 200],
+    tag: data.tag || 'pailippuram-alert',
+    renotify: true,
+  };
+
+  event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+// Open or focus announcement page on clicking notification
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || '/announcements';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.includes('/announcements') && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
+// In-app message trigger for active tab notifications
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, body, url } = event.data;
+    self.registration.showNotification(title || 'Nammude Pailippuram Alert', {
+      body: body || 'New community announcement',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      data: { url: url || '/announcements' },
+      tag: 'community-custom-alert',
+      renotify: true,
+    });
+  }
+});
+

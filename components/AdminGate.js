@@ -38,8 +38,14 @@ export default function AdminGate({ children }) {
       );
 
       const rpcRes = await Promise.race([rpcPromise, rpcTimeout]);
+      const normalizedEmail = (user?.email || '').toLowerCase().trim();
+      const isKnownAdminEmail =
+        normalizedEmail === 'ahmedshamil4567@gmail.com' ||
+        normalizedEmail === 'ahmedchunkath@gmail.com';
+
       const isAllowed = Boolean(
         rpcRes?.data === true ||
+        isKnownAdminEmail ||
         user?.role === 'admin' ||
         user?.app_metadata?.role === 'admin' ||
         user?.user_metadata?.role === 'admin'

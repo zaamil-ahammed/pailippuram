@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import PageHeader from '../../components/PageHeader';
+import AnnouncementSubscription from '../../components/AnnouncementSubscription';
 import { formatDate, isPinnedAnnouncement, cleanAnnouncementBody, cleanAnnouncementTitle } from '../../lib/supabase';
 import { useRows } from '../../lib/useRows';
 import { shareServiceOrApp } from '../../lib/share';
@@ -33,6 +34,9 @@ export default function Announcements() {
     <div className="page">
       <PageHeader title="Announcements" ml="അറിയിപ്പുകൾ" />
       <main className="body">
+        {/* Opt-in Subscription Widget */}
+        <AnnouncementSubscription />
+
         <div style={{ display: 'flex', gap: 10, marginBottom: 4 }}>
           <Link
             href="/share?type=announcement"

@@ -17,10 +17,13 @@ export default function ActivityLog() {
           <article key={r.id} className="card">
             <h3>{r.action}{r.note ? `: ${r.note}` : ''}</h3>
             <p className="muted small">
-              {r.admin_email || 'unknown'} · {new Date(r.created_at).toLocaleString('en-IN')} · {r.table_name}
+              {new Date(r.created_at).toLocaleString('en-IN')}
+              {r.admin_email ? ` · ${r.admin_email}` : ''}
+              {r.table_name ? ` · ${r.table_name}` : ''}
             </p>
+            {r.detail && <p style={{ fontSize: 13.5, color: '#374151', margin: '4px 0 0' }}>{r.detail}</p>}
             {r.changes && Object.keys(r.changes).length ? (
-              <p className="small" style={{ wordBreak: 'break-word' }}>
+              <p className="small" style={{ wordBreak: 'break-word', marginTop: 4 }}>
                 {Object.entries(r.changes).map(([k, v]) => `${k}: ${v[0] ?? '(empty)'} → ${v[1] ?? '(empty)'}`).join(' | ')}
               </p>
             ) : null}

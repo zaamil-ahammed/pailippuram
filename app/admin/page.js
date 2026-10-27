@@ -216,6 +216,52 @@ export default function AdminHome() {
         </div>
       </header>
       <main className="body">
+        {/* Quick Action: Custom Notification & Urgent Broadcast */}
+        <div
+          className="card"
+          style={{
+            background: 'linear-gradient(135deg, #1f1d18 0%, #2e281d 100%)',
+            color: '#ffffff',
+            border: '1.5px solid var(--accent-border, #d8b368)',
+            borderRadius: 18,
+            padding: '14px 18px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+            marginBottom: 6,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 26 }}>📢</span>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 15, color: '#fef3c7' }}>
+                Community Broadcast &amp; Custom Alerts
+              </div>
+              <span style={{ fontSize: 12.5, color: '#d1d5db' }}>
+                Send urgent announcements directly to residents via WhatsApp &amp; Push
+              </span>
+            </div>
+          </div>
+          <Link
+            href="/admin/notifications"
+            className="btn dark"
+            style={{
+              background: 'linear-gradient(135deg, #c5a059 0%, #b38b3f 100%)',
+              color: '#121212',
+              fontWeight: 800,
+              fontSize: 13,
+              minHeight: 36,
+              border: 'none',
+              padding: '0 14px',
+            }}
+          >
+            📢 Send Notification &rarr;
+          </Link>
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <h2 style={{ margin: 0 }}>Waiting for review <span className="badge">{waiting.length}</span></h2>
           <button
@@ -350,6 +396,10 @@ export default function AdminHome() {
 
         <h2>Site tools</h2>
         <div className="stack">
+          <Link className="linkrow" href="/admin/notifications">
+            <span>📢 <strong>Custom Notifications &amp; Broadcast</strong>: send urgent alerts to subscribers</span>
+            <span aria-hidden="true">&#8250;</span>
+          </Link>
           <Link className="linkrow" href="/admin/categories"><span>🏷️ Custom categories: add, edit and delete</span><span aria-hidden="true">&#8250;</span></Link>
           <Link className="linkrow" href="/admin/log"><span>Activity log: who changed what</span><span aria-hidden="true">&#8250;</span></Link>
           <Link className="linkrow" href="/admin/admins"><span>Admins and roles</span><span aria-hidden="true">&#8250;</span></Link>

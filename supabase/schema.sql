@@ -136,6 +136,35 @@ create table if not exists audit_logs (
   created_at timestamptz not null default now()
 );
 
+-- Opt-in subscriptions for local announcements and urgent community alerts
+create table if not exists announcement_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  contact_type text not null check (contact_type in ('browser', 'whatsapp', 'phone', 'email')),
+  target text not null, -- phone, email, or browser push endpoint/token
+  name text check (char_length(name) <= 120),
+  area text check (char_length(area) <= 80),
+  topics text not null default 'all', -- 'all', or comma separated: 'urgent,kseb_water,health,general'
+  status text not null default 'active' check (status in ('active', 'unsubscribed')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Log of custom notifications and community broadcasts dispatched by administrators
+create table if not exists custom_notifications (
+  id uuid primary key default gen_random_uuid(),
+  title text not null check (char_length(title) between 2 and 150),
+  title_ml text,
+  body text not null check (char_length(body) <= 2000),
+  urgency text not null default 'urgent' check (urgency in ('urgent', 'general', 'service', 'health')),
+  topic text not null default 'all',
+  target_audience text not null default 'All Subscribers',
+  recipients_count int not null default 0,
+  channels jsonb default '["browser", "announcement"]'::jsonb,
+  announcement_id uuid references announcements(id) on delete set null,
+  sent_by text,
+  created_at timestamptz not null default now()
+);
+
 -- ---------- Helpers ----------
 
 create or replace function touch_updated_at() returns trigger
@@ -188,6 +217,16 @@ alter table audit_logs enable row level security;
 create policy "admins read log" on audit_logs for select using (is_admin());
 create policy "admins write log" on audit_logs for insert
   with check (is_admin() and admin_id = auth.uid());
+
+alter table announcement_subscriptions enable row level security;
+create policy "anyone can subscribe" on announcement_subscriptions for insert with check (true);
+create policy "anyone can update own subscription" on announcement_subscriptions for update using (true) with check (true);
+create policy "admins read all subscriptions" on announcement_subscriptions for select using (is_admin());
+create policy "admins manage subscriptions" on announcement_subscriptions for all using (is_admin()) with check (is_admin());
+
+alter table custom_notifications enable row level security;
+create policy "anyone reads custom notifications" on custom_notifications for select using (true);
+create policy "admins manage custom notifications" on custom_notifications for all using (is_admin()) with check (is_admin());
 
 -- ---------- Starter categories (edit freely) ----------
 
