@@ -40,7 +40,13 @@ export default function AdminNotificationsPage() {
     setLoading(true);
     setErrorMsg('');
     try {
-      const res = await fetch('/api/admin/notifications');
+      const res = await fetch(`/api/admin/notifications?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+        },
+      });
       const data = await res.json();
       if (res.ok && data.success) {
         setStats(data.stats || {});

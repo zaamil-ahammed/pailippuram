@@ -16,6 +16,9 @@ function getServiceClient() {
   });
 }
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // --------------------------------------------------------------------------
 // POST /api/subscriptions: Opt-in for urgent community updates & announcements
 // --------------------------------------------------------------------------

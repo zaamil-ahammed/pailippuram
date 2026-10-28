@@ -29,7 +29,13 @@ export default function AdminHome() {
     setLoadingQueue(true);
     setQueueError('');
     try {
-      const res = await fetch('/api/admin/submissions');
+      const res = await fetch(`/api/admin/submissions?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+        },
+      });
       const data = await res.json();
       if (res.ok && data.success) {
         const sorted = Array.isArray(data.submissions)
@@ -49,6 +55,16 @@ export default function AdminHome() {
   useEffect(() => {
     loadQueue();
   }, [loadQueue]);
+
+  // Automatically refresh queue and counts when returning to the tab
+  useEffect(() => {
+    function onFocus() {
+      loadQueue();
+      refreshCounts();
+    }
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [loadQueue, refreshCounts]);
 
   const refreshCounts = useCallback(async () => {
     try {

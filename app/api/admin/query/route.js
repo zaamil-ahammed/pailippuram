@@ -15,6 +15,15 @@ function getServiceClient() {
   });
 }
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
+
 // POST /api/admin/query: Allows authenticated admin panel to query Supabase directly
 // using the service role key, bypassing RLS restrictions that prevent anon users from
 // viewing hidden/archived items, audit logs, or pending records.
@@ -26,6 +35,7 @@ export async function POST(req) {
       select = '*',
       filters = [],
       order,
+      orders = [],
       limit,
       range,
       head = false,
@@ -35,12 +45,18 @@ export async function POST(req) {
     } = body || {};
 
     if (!table) {
-      return NextResponse.json({ error: 'Table is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Table is required' },
+        { status: 400, headers: NO_CACHE_HEADERS }
+      );
     }
 
     const supabase = getServiceClient();
     if (!supabase) {
-      return NextResponse.json({ error: 'Database service client not configured' }, { status: 503 });
+      return NextResponse.json(
+        { error: 'Database service client not configured' },
+        { status: 503, headers: NO_CACHE_HEADERS }
+      );
     }
 
     const selectOptions = {};
@@ -55,15 +71,24 @@ export async function POST(req) {
       else if (f.type === 'or') q = q.or(f.expr);
       else if (f.type === 'in') q = q.in(f.col, f.vals);
       else if (f.type === 'ilike') q = q.ilike(f.col, f.pattern);
+      else if (f.type === 'like') q = q.like(f.col, f.pattern);
       else if (f.type === 'is') q = q.is(f.col, f.val);
       else if (f.type === 'lt') q = q.lt(f.col, f.val);
       else if (f.type === 'lte') q = q.lte(f.col, f.val);
       else if (f.type === 'gt') q = q.gt(f.col, f.val);
       else if (f.type === 'gte') q = q.gte(f.col, f.val);
+      else if (f.type === 'not') q = q.not(f.col, f.operator, f.val);
+      else if (f.type === 'contains') q = q.contains(f.col, f.val);
     }
 
-    if (order && order.col) {
-      q = q.order(order.col, { ascending: order.ascending ?? true });
+    const sortList = Array.isArray(orders) && orders.length > 0 ? orders : (order ? [order] : []);
+    for (const s of sortList) {
+      if (s && s.col) {
+        q = q.order(s.col, {
+          ascending: s.ascending ?? true,
+          ...(s.nullsFirst !== undefined ? { nullsFirst: s.nullsFirst } : {}),
+        });
+      }
     }
 
     if (range && Array.isArray(range) && range.length === 2) {
@@ -82,17 +107,26 @@ export async function POST(req) {
 
     if (res.error) {
       console.warn(`[API Admin Query] Query error on ${table}:`, res.error);
-      return NextResponse.json({ success: false, error: res.error.message, data: null }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: res.error.message, data: null },
+        { status: 400, headers: NO_CACHE_HEADERS }
+      );
     }
 
-    return NextResponse.json({
-      success: true,
-      data: res.data,
-      count: res.count,
-      status: res.status,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: res.data,
+        count: res.count,
+        status: res.status,
+      },
+      { headers: NO_CACHE_HEADERS }
+    );
   } catch (err) {
     console.error('[API Admin Query Fatal]', err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: err.message },
+      { status: 500, headers: NO_CACHE_HEADERS }
+    );
   }
 }

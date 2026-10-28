@@ -20,13 +20,22 @@ function getServiceClient() {
   });
 }
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
+
 // GET /api/admin/submissions: Fetches pending review queue directly with service role (bypassing RLS)
 export async function GET(req) {
   try {
     const supabase = getServiceClient();
     if (!supabase) {
       const localSubs = memoryStore.getTable('submissions').filter((s) => s.status === 'pending');
-      return NextResponse.json({ success: true, submissions: localSubs });
+      return NextResponse.json({ success: true, submissions: localSubs }, { headers: NO_CACHE_HEADERS });
     }
 
     const { data, error } = await supabase
@@ -38,13 +47,13 @@ export async function GET(req) {
     if (error) {
       console.warn('[API Submissions GET error]', error);
       const localSubs = memoryStore.getTable('submissions').filter((s) => s.status === 'pending');
-      return NextResponse.json({ success: true, submissions: localSubs });
+      return NextResponse.json({ success: true, submissions: localSubs }, { headers: NO_CACHE_HEADERS });
     }
 
-    return NextResponse.json({ success: true, submissions: data || [] });
+    return NextResponse.json({ success: true, submissions: data || [] }, { headers: NO_CACHE_HEADERS });
   } catch (err) {
     console.error('[API Submissions GET exception]', err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: err.message }, { status: 500, headers: NO_CACHE_HEADERS });
   }
 }
 

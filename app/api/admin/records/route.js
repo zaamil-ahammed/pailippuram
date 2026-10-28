@@ -8,6 +8,15 @@ const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl);
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
+
 function getServiceClient() {
   const key = supabaseServiceKey || supabaseAnonKey;
   if (!supabaseUrl || !key) return null;
@@ -451,7 +460,10 @@ export async function GET(req) {
     const limit = parseInt(searchParams.get('limit') || '100', 10);
 
     if (!table) {
-      return NextResponse.json({ success: false, error: 'Table parameter is required' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: 'Table parameter is required' },
+        { status: 400, headers: NO_CACHE_HEADERS }
+      );
     }
 
     const supabase = getServiceClient();
@@ -460,7 +472,10 @@ export async function GET(req) {
       let filtered = localTable;
       if (id) filtered = filtered.filter((r) => String(r.id) === String(id));
       if (status) filtered = filtered.filter((r) => r.status === status);
-      return NextResponse.json({ success: true, data: id ? (filtered[0] || null) : filtered.slice(0, limit) });
+      return NextResponse.json(
+        { success: true, data: id ? (filtered[0] || null) : filtered.slice(0, limit) },
+        { headers: NO_CACHE_HEADERS }
+      );
     }
 
     let q = supabase.from(table).select('*');
@@ -482,12 +497,18 @@ export async function GET(req) {
 
     if (error) {
       console.error(`[GET /api/admin/records] Error on ${table}:`, error);
-      return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 400, headers: NO_CACHE_HEADERS }
+      );
     }
 
-    return NextResponse.json({ success: true, data }, { status: 200 });
+    return NextResponse.json({ success: true, data }, { status: 200, headers: NO_CACHE_HEADERS });
   } catch (err) {
     console.error('[GET /api/admin/records Fatal]', err);
-    return NextResponse.json({ success: false, error: err.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: err.message || 'Internal server error' },
+      { status: 500, headers: NO_CACHE_HEADERS }
+    );
   }
 }

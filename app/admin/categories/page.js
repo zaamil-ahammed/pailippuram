@@ -185,17 +185,32 @@ export default function AdminCategories() {
               Only authenticated administrators can manage custom categories. Normal visitors cannot add custom categories.
             </p>
           </div>
-          <button
-            type="button"
-            className="btn dark"
-            onClick={() => {
-              setShowAddForm(!showAddForm);
-              setFormError('');
-            }}
-            style={{ fontWeight: 700 }}
-          >
-            {showAddForm ? '✕ Close Form' : '+ Add custom category'}
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              type="button"
+              className="btn light"
+              onClick={() => {
+                cats.reload();
+                listings.reload();
+                showToast({ type: 'info', message: 'Syncing categories from database...' });
+              }}
+              style={{ fontWeight: 700 }}
+              title="Pull fresh categories directly from Supabase"
+            >
+              🔄 Refresh
+            </button>
+            <button
+              type="button"
+              className="btn dark"
+              onClick={() => {
+                setShowAddForm(!showAddForm);
+                setFormError('');
+              }}
+              style={{ fontWeight: 700 }}
+            >
+              {showAddForm ? '✕ Close Form' : '+ Add custom category'}
+            </button>
+          </div>
         </div>
 
         {/* Add custom category form */}

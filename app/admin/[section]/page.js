@@ -186,6 +186,25 @@ export default function AdminList() {
               🏷️ Categories
             </Link>
           )}
+          <button
+            type="button"
+            className="btn light"
+            onClick={() => {
+              reload();
+              showToast({ type: 'info', message: 'Syncing live data from database...' });
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 13.5,
+              fontWeight: 700,
+              padding: '0 16px',
+            }}
+            title="Reload newest records directly from Supabase"
+          >
+            🔄 Refresh
+          </button>
         </div>
         <div className="chips">
           {FILTERS.map((f) => (
