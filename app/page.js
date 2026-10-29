@@ -21,6 +21,20 @@ const TILES = [
     ),
   },
   {
+    href: '/schools',
+    label: 'Schools & Madrassas',
+    ml: 'വിദ്യാഭ്യാസം / സ്കൂളുകൾ',
+    bg: '#faf6ee',
+    iconColor: '#8c6d32',
+    border: '#e8ddc8',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+        <path d="M6 12v5c3 3 9 3 12 0v-5" />
+      </svg>
+    ),
+  },
+  {
     href: '/shops',
     label: 'Local shops',
     ml: 'കടകൾ',

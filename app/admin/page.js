@@ -52,20 +52,6 @@ export default function AdminHome() {
     }
   }, []);
 
-  useEffect(() => {
-    loadQueue();
-  }, [loadQueue]);
-
-  // Automatically refresh queue and counts when returning to the tab
-  useEffect(() => {
-    function onFocus() {
-      loadQueue();
-      refreshCounts();
-    }
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [loadQueue, refreshCounts]);
-
   const refreshCounts = useCallback(async () => {
     try {
       const next = {};
@@ -103,8 +89,19 @@ export default function AdminHome() {
   }, []);
 
   useEffect(() => {
+    loadQueue();
     refreshCounts();
-  }, [refreshCounts]);
+  }, [loadQueue, refreshCounts]);
+
+  // Automatically refresh queue and counts when returning to the tab
+  useEffect(() => {
+    function onFocus() {
+      loadQueue();
+      refreshCounts();
+    }
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [loadQueue, refreshCounts]);
 
   const [actionError, setActionError] = useState('');
 

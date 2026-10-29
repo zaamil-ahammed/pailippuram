@@ -42,6 +42,17 @@ const LINKS = [
     ),
   },
   {
+    href: '/schools',
+    label: 'Schools & Madrassas',
+    ml: 'സ്കൂളുകൾ & മദ്രസകൾ',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+        <path d="M6 12v5c3 3 9 3 12 0v-5" />
+      </svg>
+    ),
+  },
+  {
     href: '/shops',
     label: 'Local shops',
     ml: 'കടകൾ',
@@ -148,6 +159,17 @@ const LINKS = [
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/victory',
+    label: 'Victory Arts & Sports Club',
+    ml: 'വിക്ടറി ക്ലബ്ബ് (ESTD 1994)',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="8" r="6" />
+        <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
       </svg>
     ),
   },
