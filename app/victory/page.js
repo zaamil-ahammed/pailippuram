@@ -13,7 +13,6 @@ import {
   Phone,
   ArrowLeft,
   Home,
-  Search,
   Sparkles,
   ShieldCheck,
   Award,
@@ -21,15 +20,8 @@ import {
   ChevronRight,
   ExternalLink,
 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import { STARTER_VICTORY_MEMBERS } from '../../lib/mockStore';
-
-const WING_TABS = [
-  { id: 'all', label: 'All Committee', ml: 'പൂർണ്ണ സമിതി' },
-  { id: 'executive', label: 'Executive', ml: 'നേതൃത്വം' },
-  { id: 'portfolios', label: 'Portfolios', ml: 'വകുപ്പുകൾ' },
-  { id: 'gcc', label: 'GCC Wing', ml: 'പ്രവാസി' },
-  { id: 'central', label: 'Central', ml: 'സെൻട്രൽ' },
-];
 
 const PORTFOLIO_CONFIG = {
   'Sports Managers': {
@@ -72,16 +64,45 @@ const PORTFOLIO_CONFIG = {
 
 export default function VictoryClubLandingPage() {
   const router = useRouter();
-  // Using authoritative in-code committee records directly from codebase
-  const members = STARTER_VICTORY_MEMBERS;
-  const [selectedWing, setSelectedWing] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+
+  // 1. Initialize with in-code records so the full committee renders immediately
+  const [members, setMembers] = useState(STARTER_VICTORY_MEMBERS);
+  const [loadingMembers, setLoadingMembers] = useState(false);
 
   // Scroll to top on first mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     }
+  }, []);
+
+  // 2. Safely attempt to fetch updated records from Supabase, retaining in-code details as rock-solid fallback
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchVictoryMembers() {
+      try {
+        setLoadingMembers(true);
+        const { data, error } = await supabase
+          .from('victory_members')
+          .select('*')
+          .order('display_order', { ascending: true });
+
+        if (!error && Array.isArray(data) && data.length > 0 && isMounted) {
+          setMembers(data);
+        }
+      } catch (err) {
+        console.warn('Victory Club live query fallback to in-code details:', err);
+      } finally {
+        if (isMounted) {
+          setLoadingMembers(false);
+        }
+      }
+    }
+
+    fetchVictoryMembers();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleBack = () => {
@@ -132,29 +153,6 @@ export default function VictoryClubLandingPage() {
       .filter((m) => m.wing === 'central')
       .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
   }, [members]);
-
-  const wingCounts = useMemo(() => {
-    return {
-      all: members.length,
-      executive: executiveMembers.length,
-      portfolios: portfolioMembers.length,
-      gcc: gccMembers.length,
-      central: centralMembers.length,
-    };
-  }, [members, executiveMembers, portfolioMembers, gccMembers, centralMembers]);
-
-  // Search filtering logic
-  const searchedMembers = useMemo(() => {
-    if (!searchQuery.trim()) return null;
-    const q = searchQuery.toLowerCase().trim();
-    return members.filter((m) => {
-      const nameMatch = m.name?.toLowerCase().includes(q);
-      const roleMatch = m.role?.toLowerCase().includes(q) || m.role_ml?.toLowerCase().includes(q);
-      const portMatch = m.portfolio?.toLowerCase().includes(q);
-      const wingMatch = m.wing?.toLowerCase().includes(q);
-      return nameMatch || roleMatch || portMatch || wingMatch;
-    });
-  }, [members, searchQuery]);
 
   return (
     <div className="victory-page">
@@ -385,97 +383,6 @@ export default function VictoryClubLandingPage() {
           font-size: 13px;
           color: #94a3b8;
           margin: 0;
-        }
-
-        /* Filter Tabs */
-        .tabs-scroller {
-          display: flex;
-          gap: 8px;
-          overflow-x: auto;
-          padding: 4px 2px 14px;
-          scrollbar-width: none;
-          margin-bottom: 12px;
-          width: 100%;
-        }
-
-        .tabs-scroller::-webkit-scrollbar {
-          display: none;
-        }
-
-        .tab-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 7px;
-          padding: 8px 16px;
-          border-radius: 999px;
-          font-size: 13px;
-          font-weight: 600;
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          background: rgba(255, 255, 255, 0.035);
-          color: #94a3b8;
-          cursor: pointer;
-          white-space: nowrap;
-          transition: all 0.16s ease;
-        }
-
-        .tab-btn:hover {
-          color: #ffffff;
-          border-color: rgba(197, 160, 89, 0.4);
-          background: rgba(255, 255, 255, 0.07);
-        }
-
-        .tab-btn.active {
-          background: linear-gradient(135deg, #c5a059 0%, #927238 100%);
-          color: #09090b;
-          font-weight: 700;
-          border-color: #e5c98f;
-          box-shadow: 0 4px 14px rgba(197, 160, 89, 0.35);
-        }
-
-        .tab-counter {
-          font-size: 11px;
-          padding: 1px 7px;
-          border-radius: 999px;
-          background: rgba(0, 0, 0, 0.25);
-          color: inherit;
-        }
-
-        /* Search input */
-        .search-container {
-          position: relative;
-          width: 100%;
-          margin-bottom: 20px;
-        }
-
-        .search-icon-inside {
-          position: absolute;
-          left: 14px;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #c5a059;
-          pointer-events: none;
-        }
-
-        .search-input {
-          width: 100%;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1.5px solid rgba(197, 160, 89, 0.25);
-          border-radius: 14px;
-          padding: 11px 16px 11px 42px;
-          color: #ffffff;
-          font-size: 13.5px;
-          outline: none;
-          transition: all 0.16s ease;
-        }
-
-        .search-input:focus {
-          border-color: #e5c98f;
-          box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.2);
-          background: rgba(255, 255, 255, 0.08);
-        }
-
-        .search-input::placeholder {
-          color: #71717a;
         }
 
         /* Section Block Styling */
@@ -984,148 +891,8 @@ export default function VictoryClubLandingPage() {
             </p>
           </div>
 
-          {/* Wing Tabs */}
-          <div className="tabs-scroller">
-            {WING_TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  setSelectedWing(tab.id);
-                  setSearchQuery('');
-                }}
-                className={`tab-btn ${selectedWing === tab.id ? 'active' : ''}`}
-              >
-                <span>{tab.ml} · {tab.label}</span>
-                <span className="tab-counter">{wingCounts[tab.id] || 0}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Search Box */}
-          <div className="search-container">
-            <Search size={16} className="search-icon-inside" />
-            <input
-              type="search"
-              className="search-input"
-              placeholder="Search by name, role, or department / പേരോ ചുമതലയോ തിരയുക..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          {/* Search Mode Output */}
-          {searchQuery.trim() ? (
-            <div className="search-results-box">
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 12,
-                  padding: '4px 2px',
-                }}
-              >
-                <span style={{ fontSize: 13, color: '#e5c98f', fontWeight: 600 }}>
-                  Found {searchedMembers?.length || 0} member{(searchedMembers?.length || 0) === 1 ? '' : 's'} matching "{searchQuery}"
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#94a3b8',
-                    textDecoration: 'underline',
-                    cursor: 'pointer',
-                    fontSize: 12,
-                  }}
-                >
-                  Clear search
-                </button>
-              </div>
-
-              {searchedMembers && searchedMembers.length > 0 ? (
-                <div className="dept-members-grid">
-                  {searchedMembers.map((m) => {
-                    const initial = (m.name || 'V').charAt(0).toUpperCase();
-                    const wingLabel =
-                      m.wing === 'executive'
-                        ? 'Executive'
-                        : m.wing === 'portfolios'
-                        ? m.portfolio || 'Portfolio'
-                        : m.wing === 'gcc'
-                        ? 'GCC Wing'
-                        : 'Central Committee';
-
-                    return (
-                      <div key={m.id || m.name} className="compact-member-card">
-                        <div className="card-avatar">
-                          {m.photo_url ? (
-                            <img
-                              src={m.photo_url}
-                              alt={m.name}
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <span>{initial}</span>
-                          )}
-                        </div>
-                        <div className="card-details">
-                          <h4 className="card-name">{m.name}</h4>
-                          <p className="card-role-line">{m.role_ml || m.role}</p>
-                          <p className="card-subrole">{wingLabel}</p>
-                        </div>
-                        <div className="card-actions">
-                          {m.phone && (
-                            <a
-                              href={`tel:${m.phone}`}
-                              className="icon-btn"
-                              title={`Call ${m.name}`}
-                              aria-label={`Call ${m.name}`}
-                            >
-                              <Phone size={13} />
-                            </a>
-                          )}
-                          {m.link && (
-                            <a
-                              href={m.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="icon-btn"
-                              title={`Instagram @${m.name}`}
-                              aria-label={`Instagram profile of ${m.name}`}
-                            >
-                              <ExternalLink size={13} />
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div
-                  style={{
-                    textAlign: 'center',
-                    padding: '36px 16px',
-                    background: 'rgba(255, 255, 255, 0.02)',
-                    borderRadius: 16,
-                    border: '1px dashed rgba(197, 160, 89, 0.25)',
-                    color: '#94a3b8',
-                  }}
-                >
-                  <p style={{ margin: 0, fontSize: 14 }}>No members found matching "{searchQuery}"</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <>
-              {/* SECTION 1: EXECUTIVE LEADERSHIP PODIUM */}
-              {(selectedWing === 'all' || selectedWing === 'executive') && (
-                <div className="wing-group-block">
+          {/* SECTION 1: EXECUTIVE LEADERSHIP PODIUM */}
+          <div className="wing-group-block">
                   <div className="wing-group-header">
                     <div className="wing-group-title-wrap">
                       <div
@@ -1204,11 +971,9 @@ export default function VictoryClubLandingPage() {
                     })}
                   </div>
                 </div>
-              )}
 
               {/* SECTION 2: KEY PORTFOLIOS (DEPARTMENTALIZED) */}
-              {(selectedWing === 'all' || selectedWing === 'portfolios') && (
-                <div className="wing-group-block">
+              <div className="wing-group-block">
                   <div className="wing-group-header">
                     <div className="wing-group-title-wrap">
                       <div
@@ -1343,11 +1108,9 @@ export default function VictoryClubLandingPage() {
                     );
                   })}
                 </div>
-              )}
 
               {/* SECTION 3: GCC WING (DIASPORA CHAPTER) */}
-              {(selectedWing === 'all' || selectedWing === 'gcc') && (
-                <div className="wing-group-block">
+              <div className="wing-group-block">
                   <div className="wing-group-header">
                     <div className="wing-group-title-wrap">
                       <div
@@ -1407,11 +1170,9 @@ export default function VictoryClubLandingPage() {
                     ))}
                   </div>
                 </div>
-              )}
 
               {/* SECTION 4: CENTRAL COMMITTEE (GOVERNING COUNCIL) */}
-              {(selectedWing === 'all' || selectedWing === 'central') && (
-                <div className="wing-group-block">
+              <div className="wing-group-block">
                   <div className="wing-group-header">
                     <div className="wing-group-title-wrap">
                       <div
@@ -1471,9 +1232,6 @@ export default function VictoryClubLandingPage() {
                     ))}
                   </div>
                 </div>
-              )}
-            </>
-          )}
         </section>
 
         {/* Social Connect Box */}
