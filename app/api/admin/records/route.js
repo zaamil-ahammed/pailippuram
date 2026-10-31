@@ -480,7 +480,17 @@ export async function GET(req) {
 
     let q = supabase.from(table).select('*');
     if (id) {
-      q = q.eq('id', id).maybeSingle();
+      if (isValidUuid(id)) {
+        q = q.eq('id', id).maybeSingle();
+      } else {
+        // Not a UUID (e.g. starter ID like vm-1, c1) - find in memoryStore or fallback
+        const localTable = memoryStore.getTable(table);
+        const match = localTable.find((r) => String(r.id) === String(id));
+        if (match) {
+          return NextResponse.json({ success: true, data: match }, { status: 200, headers: NO_CACHE_HEADERS });
+        }
+        return NextResponse.json({ success: true, data: null }, { status: 200, headers: NO_CACHE_HEADERS });
+      }
     } else {
       if (status) q = q.eq('status', status);
       if (table === 'categories') {
@@ -497,10 +507,27 @@ export async function GET(req) {
 
     if (error) {
       console.error(`[GET /api/admin/records] Error on ${table}:`, error);
+      // Fallback to memoryStore before returning error
+      const localTable = memoryStore.getTable(table);
+      if (id) {
+        const fallbackMatch = localTable.find((r) => String(r.id) === String(id));
+        if (fallbackMatch) {
+          return NextResponse.json({ success: true, data: fallbackMatch }, { status: 200, headers: NO_CACHE_HEADERS });
+        }
+      }
       return NextResponse.json(
         { success: false, error: error.message },
         { status: 400, headers: NO_CACHE_HEADERS }
       );
+    }
+
+    // If id was requested but not found in Supabase, check memoryStore fallback
+    if (id && !data) {
+      const localTable = memoryStore.getTable(table);
+      const fallbackMatch = localTable.find((r) => String(r.id) === String(id));
+      if (fallbackMatch) {
+        return NextResponse.json({ success: true, data: fallbackMatch }, { status: 200, headers: NO_CACHE_HEADERS });
+      }
     }
 
     return NextResponse.json({ success: true, data }, { status: 200, headers: NO_CACHE_HEADERS });

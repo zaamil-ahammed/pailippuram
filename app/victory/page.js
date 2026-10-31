@@ -19,6 +19,8 @@ import {
   Layers,
   ChevronRight,
   ExternalLink,
+  UserCheck,
+  QrCode,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { STARTER_VICTORY_MEMBERS, memoryStore } from '../../lib/mockStore';
@@ -743,6 +745,19 @@ export default function VictoryClubLandingPage() {
           transform: scale(1.08);
         }
 
+        .icon-btn.nfc-card-link {
+          color: #f59e0b;
+          background: rgba(245, 158, 11, 0.12);
+          border-color: rgba(245, 158, 11, 0.38);
+        }
+
+        .icon-btn.nfc-card-link:hover {
+          background: rgba(245, 158, 11, 0.28);
+          border-color: #f59e0b;
+          color: #ffffff;
+          box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+        }
+
         /* 3. GCC Wing Chapter & Central Council Grid */
         .roster-grid {
           display: grid;
@@ -1027,6 +1042,14 @@ export default function VictoryClubLandingPage() {
                           <div className="exec-role-en">{m.role}</div>
 
                           <div className="exec-actions">
+                            <Link
+                              href={`/victory/member/${m.id}`}
+                              className="icon-btn nfc-card-link"
+                              title={`NFC Digital Card: ${m.name}`}
+                              aria-label={`Digital Card: ${m.name}`}
+                            >
+                              <UserCheck size={13} />
+                            </Link>
                             {m.phone && (
                               <a
                                 href={`tel:${m.phone}`}
@@ -1165,6 +1188,14 @@ export default function VictoryClubLandingPage() {
                                   <p className="card-subrole">{config.title}</p>
                                 </div>
                                 <div className="card-actions">
+                                  <Link
+                                    href={`/victory/member/${m.id}`}
+                                    className="icon-btn nfc-card-link"
+                                    title={`NFC Digital Card: ${m.name}`}
+                                    aria-label={`Digital Card: ${m.name}`}
+                                  >
+                                    <UserCheck size={13} />
+                                  </Link>
                                   {m.phone && (
                                     <a
                                       href={`tel:${m.phone}`}
@@ -1248,6 +1279,14 @@ export default function VictoryClubLandingPage() {
                           <h5 className="roster-name">{m.name}</h5>
                           <p className="roster-role-tag">{m.role_ml || 'പ്രവാസി ചാപ്റ്റർ അംഗം'}</p>
                         </div>
+                        <Link
+                          href={`/victory/member/${m.id}`}
+                          className="icon-btn nfc-card-link"
+                          title={`NFC Digital Card: ${m.name}`}
+                          aria-label={`Digital Card: ${m.name}`}
+                        >
+                          <UserCheck size={12} />
+                        </Link>
                         {m.phone && (
                           <a
                             href={`tel:${m.phone}`}
@@ -1326,6 +1365,14 @@ export default function VictoryClubLandingPage() {
                           <h5 className="roster-name">{m.name}</h5>
                           <p className="roster-role-tag">{m.role_ml || 'സെൻട്രൽ കമ്മിറ്റി അംഗം'}</p>
                         </div>
+                        <Link
+                          href={`/victory/member/${m.id}`}
+                          className="icon-btn nfc-card-link"
+                          title={`NFC Digital Card: ${m.name}`}
+                          aria-label={`Digital Card: ${m.name}`}
+                        >
+                          <UserCheck size={12} />
+                        </Link>
                         {m.phone && (
                           <a
                             href={`tel:${m.phone}`}

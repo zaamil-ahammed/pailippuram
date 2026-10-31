@@ -34,6 +34,8 @@ export default function AdminVictoryPage() {
     portfolio: '',
     link: DEFAULT_LINK,
     phone: '',
+    blood_group: 'O+',
+    location: 'Pailippuram',
     display_order: 1,
     status: 'approved',
   });
@@ -97,6 +99,8 @@ export default function AdminVictoryPage() {
       portfolio: '',
       link: DEFAULT_LINK,
       phone: '',
+      blood_group: 'O+',
+      location: 'Pailippuram',
       display_order: nextOrder,
       status: 'approved',
     });
@@ -115,6 +119,8 @@ export default function AdminVictoryPage() {
       portfolio: member.portfolio || '',
       link: member.link || DEFAULT_LINK,
       phone: member.phone || '',
+      blood_group: member.blood_group || 'O+',
+      location: member.location || 'Pailippuram',
       display_order: member.display_order ?? 1,
       status: member.status || 'approved',
     });
@@ -160,6 +166,8 @@ export default function AdminVictoryPage() {
         portfolio: formData.wing === 'portfolios' ? (formData.portfolio?.trim() || null) : null,
         link: cleanLink.slice(0, 300),
         phone: formData.phone?.trim() ? formData.phone.trim().slice(0, 20) : null,
+        blood_group: formData.blood_group?.trim() ? formData.blood_group.trim().slice(0, 10) : 'O+',
+        location: formData.location?.trim() ? formData.location.trim().slice(0, 80) : 'Pailippuram',
         display_order: Number(formData.display_order) >= 1 ? Number(formData.display_order) : 1,
         status: formData.status === 'hidden' ? 'hidden' : 'approved',
         updated_at: new Date().toISOString(),
@@ -542,7 +550,41 @@ export default function AdminVictoryPage() {
                   </div>
 
                   {/* Actions Row */}
-                  <div className="btnrow" style={{ marginTop: 2 }}>
+                  <div className="btnrow" style={{ marginTop: 2, flexWrap: 'wrap' }}>
+                    <Link
+                      href={`/victory/member/${m.id}`}
+                      target="_blank"
+                      className="btn light"
+                      style={{ fontSize: 13, minHeight: 38, gap: 5, color: '#b45309', borderColor: '#fcd34d', textDecoration: 'none' }}
+                      title="Preview NFC Digital Card"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="4" width="20" height="16" rx="2" />
+                        <line x1="6" y1="8" x2="6" y2="8" />
+                        <line x1="10" y1="8" x2="18" y2="8" />
+                        <line x1="6" y1="12" x2="18" y2="12" />
+                      </svg>
+                      NFC Profile
+                    </Link>
+
+                    <button
+                      type="button"
+                      className="btn light"
+                      onClick={() => {
+                        const url = `${window.location.origin}/victory/member/${m.id}`;
+                        navigator.clipboard?.writeText(url);
+                        showToast(`NFC URL copied for ${m.name}!`);
+                      }}
+                      style={{ fontSize: 13, minHeight: 38, gap: 5 }}
+                      title="Copy URL to program onto physical NFC tag"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                      Copy NFC URL
+                    </button>
+
                     <button
                       type="button"
                       className="btn light"
@@ -553,7 +595,7 @@ export default function AdminVictoryPage() {
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                       </svg>
-                      Edit Details &amp; Photo
+                      Edit
                     </button>
 
                     <button
@@ -577,7 +619,7 @@ export default function AdminVictoryPage() {
                         borderColor: deletingId === m.id ? '#dc2626' : undefined,
                       }}
                     >
-                      {deletingId === m.id ? 'Confirm Delete?' : 'Delete'}
+                      {deletingId === m.id ? 'Confirm?' : 'Delete'}
                     </button>
                   </div>
                 </article>
@@ -760,6 +802,38 @@ export default function AdminVictoryPage() {
                 <span className="muted small" style={{ fontSize: 11.5 }}>
                   Default is @victory_pailippuram official club Instagram profile
                 </span>
+              </div>
+
+              {/* NFC & Emergency Vitals: Blood Group & Location */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="field">
+                  <label htmlFor="m-blood" style={{ fontWeight: 700 }}>
+                    Blood Group (NFC Vitals)
+                  </label>
+                  <select
+                    id="m-blood"
+                    value={formData.blood_group}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, blood_group: e.target.value }))}
+                  >
+                    {['O+', 'A+', 'B+', 'AB+', 'O-', 'A-', 'B-', 'AB-'].map((bg) => (
+                      <option key={bg} value={bg}>
+                        {bg}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="m-location" style={{ fontWeight: 700 }}>
+                    Base Location / Area
+                  </label>
+                  <input
+                    id="m-location"
+                    type="text"
+                    placeholder="e.g. Pailippuram, Dubai, etc."
+                    value={formData.location}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
+                  />
+                </div>
               </div>
 
               {/* Sort Order & Status */}
