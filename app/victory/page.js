@@ -218,6 +218,12 @@ export default function VictoryClubLandingPage() {
       .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
   }, [activeMembers]);
 
+  const nonCommitteeMembers = useMemo(() => {
+    return activeMembers
+      .filter((m) => m.wing === 'non_committee' || m.wing === 'general' || m.wing === 'club_member' || m.wing === 'member')
+      .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+  }, [activeMembers]);
+
   return (
     <div className="victory-page">
       <style>{`
@@ -773,6 +779,29 @@ export default function VictoryClubLandingPage() {
           box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
         }
 
+        .nfc-profile-badge-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 14px;
+          border-radius: 999px;
+          background: rgba(245, 158, 11, 0.14);
+          border: 1px solid rgba(245, 158, 11, 0.4);
+          color: #f59e0b;
+          font-size: 12px;
+          font-weight: 700;
+          text-decoration: none;
+          transition: all 0.16s ease;
+        }
+
+        .nfc-profile-badge-btn:hover {
+          background: rgba(245, 158, 11, 0.28);
+          border-color: #f59e0b;
+          color: #ffffff;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+        }
+
         /* 3. GCC Wing Chapter & Central Council Grid */
         .roster-grid {
           display: grid;
@@ -1059,34 +1088,13 @@ export default function VictoryClubLandingPage() {
                           <div className="exec-actions">
                             <Link
                               href={`/victory/member/${m.id}`}
-                              className="icon-btn nfc-card-link"
+                              className="nfc-profile-badge-btn"
                               title={`NFC Digital Card: ${m.name}`}
                               aria-label={`Digital Card: ${m.name}`}
                             >
                               <UserCheck size={13} />
+                              <span>NFC Profile</span>
                             </Link>
-                            {m.phone && (
-                              <a
-                                href={`tel:${m.phone}`}
-                                className="icon-btn"
-                                title={`Call ${m.name}`}
-                                aria-label={`Call ${m.name}`}
-                              >
-                                <Phone size={13} />
-                              </a>
-                            )}
-                            {m.link && (
-                              <a
-                                href={m.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="icon-btn"
-                                title={`Instagram @${m.name}`}
-                                aria-label={`Instagram profile of ${m.name}`}
-                              >
-                                <ExternalLink size={13} />
-                              </a>
-                            )}
                           </div>
                         </div>
                       );
@@ -1209,30 +1217,8 @@ export default function VictoryClubLandingPage() {
                                     title={`NFC Digital Card: ${m.name}`}
                                     aria-label={`Digital Card: ${m.name}`}
                                   >
-                                    <UserCheck size={13} />
+                                    <UserCheck size={14} />
                                   </Link>
-                                  {m.phone && (
-                                    <a
-                                      href={`tel:${m.phone}`}
-                                      className="icon-btn"
-                                      title={`Call ${m.name}`}
-                                      aria-label={`Call ${m.name}`}
-                                    >
-                                      <Phone size={13} />
-                                    </a>
-                                  )}
-                                  {m.link && (
-                                    <a
-                                      href={m.link}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="icon-btn"
-                                      title={`Instagram @${m.name}`}
-                                      aria-label={`Instagram profile of ${m.name}`}
-                                    >
-                                      <ExternalLink size={13} />
-                                    </a>
-                                  )}
                                 </div>
                               </div>
                             );
@@ -1302,28 +1288,6 @@ export default function VictoryClubLandingPage() {
                         >
                           <UserCheck size={12} />
                         </Link>
-                        {m.phone && (
-                          <a
-                            href={`tel:${m.phone}`}
-                            className="icon-btn"
-                            title={`Call ${m.name}`}
-                            aria-label={`Call ${m.name}`}
-                          >
-                            <Phone size={12} />
-                          </a>
-                        )}
-                        {m.link && (
-                          <a
-                            href={m.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="icon-btn"
-                            title={`Instagram @${m.name}`}
-                            aria-label={`Instagram profile of ${m.name}`}
-                          >
-                            <ExternalLink size={12} />
-                          </a>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -1388,32 +1352,76 @@ export default function VictoryClubLandingPage() {
                         >
                           <UserCheck size={12} />
                         </Link>
-                        {m.phone && (
-                          <a
-                            href={`tel:${m.phone}`}
-                            className="icon-btn"
-                            title={`Call ${m.name}`}
-                            aria-label={`Call ${m.name}`}
-                          >
-                            <Phone size={12} />
-                          </a>
-                        )}
-                        {m.link && (
-                          <a
-                            href={m.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="icon-btn"
-                            title={`Instagram @${m.name}`}
-                            aria-label={`Instagram profile of ${m.name}`}
-                          >
-                            <ExternalLink size={12} />
-                          </a>
-                        )}
                       </div>
                     ))}
                   </div>
                 </div>
+
+              {/* SECTION 5: GENERAL CLUB MEMBERS (NON-COMMITTEE) */}
+              {nonCommitteeMembers.length > 0 && (
+                <div className="wing-group-block">
+                  <div className="wing-group-header">
+                    <div className="wing-group-title-wrap">
+                      <div
+                        className="wing-group-icon"
+                        style={{
+                          background: 'rgba(234, 179, 8, 0.15)',
+                          color: '#eab308',
+                          border: '1px solid rgba(234, 179, 8, 0.35)',
+                        }}
+                      >
+                        <Award size={18} />
+                      </div>
+                      <div>
+                        <h3 className="wing-group-title">
+                          Club Members &amp; Volunteers
+                          <span className="wing-group-title-ml">പൊതു അംഗങ്ങൾ</span>
+                        </h3>
+                        <p className="wing-group-desc">
+                          Registered active club members and youth volunteers with dedicated NFC digital identity profiles
+                        </p>
+                      </div>
+                    </div>
+                    <span className="wing-badge-count">{nonCommitteeMembers.length} Members</span>
+                  </div>
+
+                  <div className="roster-grid">
+                    {nonCommitteeMembers.map((m, idx) => (
+                      <div key={m.id || m.name} className="roster-item">
+                        <div className="roster-avatar">
+                          {m.photo_url ? (
+                            <img
+                              src={m.photo_url}
+                              alt={m.name}
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                const fallback = e.currentTarget.parentElement?.querySelector('.roster-index');
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          <span className="roster-index" style={{ display: m.photo_url ? 'none' : 'flex' }}>
+                            #{idx + 1}
+                          </span>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h5 className="roster-name">{m.name}</h5>
+                          <p className="roster-role-tag">{m.role_ml || m.role || 'ക്ലബ്ബ് അംഗം'}</p>
+                        </div>
+                        <Link
+                          href={`/victory/member/${m.id}`}
+                          className="icon-btn nfc-card-link"
+                          title={`NFC Digital Card: ${m.name}`}
+                          aria-label={`Digital Card: ${m.name}`}
+                        >
+                          <UserCheck size={12} />
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
         </section>
 
         {/* Social Connect Box */}

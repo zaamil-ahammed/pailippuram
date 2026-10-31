@@ -11,6 +11,7 @@ import { useRows } from '../../../lib/useRows';
 import { VICTORY_WINGS, VICTORY_PORTFOLIOS } from '../../../lib/sections';
 import { STARTER_VICTORY_MEMBERS } from '../../../lib/mockStore';
 import { showToast } from '../../../lib/toast';
+import { parseVictorySocials, encodeVictorySocials } from '../../../lib/victorySocials';
 
 const DEFAULT_LINK = 'https://www.instagram.com/victory_pailippuram';
 
@@ -34,6 +35,12 @@ export default function AdminVictoryPage() {
     portfolio: '',
     link: DEFAULT_LINK,
     phone: '',
+    alt_phone: '',
+    email: '',
+    facebook: '',
+    linkedin: '',
+    twitter: '',
+    website: '',
     blood_group: 'O+',
     location: 'Pailippuram',
     display_order: 1,
@@ -70,6 +77,8 @@ export default function AdminVictoryPage() {
     let list = effectiveRows;
     if (activeTab === 'hidden') {
       list = list.filter((m) => m.status === 'hidden');
+    } else if (activeTab === 'non_committee') {
+      list = list.filter((m) => m.wing === 'non_committee' || m.wing === 'general' || m.wing === 'club_member' || m.wing === 'member');
     } else if (activeTab !== 'all') {
       list = list.filter((m) => m.wing === activeTab);
     }
@@ -90,15 +99,22 @@ export default function AdminVictoryPage() {
     setErrorMsg('');
     setSuccessMsg('');
     const nextOrder = (rows?.length || 0) + 1;
+    const isNonComm = activeTab === 'non_committee';
     setFormData({
       name: '',
       photo_url: '',
-      role: '',
-      role_ml: '',
-      wing: activeTab !== 'all' && activeTab !== 'hidden' ? activeTab : 'executive',
+      role: isNonComm ? 'Club Member' : '',
+      role_ml: isNonComm ? 'ക്ലബ്ബ് അംഗം' : '',
+      wing: isNonComm ? 'non_committee' : (activeTab !== 'all' && activeTab !== 'hidden' ? activeTab : 'executive'),
       portfolio: '',
       link: DEFAULT_LINK,
       phone: '',
+      alt_phone: '',
+      email: '',
+      facebook: '',
+      linkedin: '',
+      twitter: '',
+      website: '',
       blood_group: 'O+',
       location: 'Pailippuram',
       display_order: nextOrder,
@@ -114,6 +130,8 @@ export default function AdminVictoryPage() {
     const cleanBg = Array.isArray(rawBg) ? rawBg[0] : (rawBg || 'O+');
     const rawLoc = member.location;
     const cleanLoc = Array.isArray(rawLoc) ? rawLoc[0] : (rawLoc || 'Pailippuram');
+    const socials = parseVictorySocials(member);
+
     setFormData({
       name: member.name || '',
       photo_url: member.photo_url || '',
@@ -121,8 +139,14 @@ export default function AdminVictoryPage() {
       role_ml: member.role_ml || '',
       wing: member.wing || 'executive',
       portfolio: member.portfolio || '',
-      link: member.link || DEFAULT_LINK,
-      phone: member.phone || '',
+      link: socials.instagram || DEFAULT_LINK,
+      phone: socials.phone || '',
+      alt_phone: socials.alt_phone || '',
+      email: socials.email || '',
+      facebook: socials.facebook || '',
+      linkedin: socials.linkedin || '',
+      twitter: socials.twitter || '',
+      website: socials.website || '',
       blood_group: cleanBg,
       location: cleanLoc,
       display_order: member.display_order ?? 1,
@@ -150,16 +174,16 @@ export default function AdminVictoryPage() {
 
     setSaving(true);
     try {
-      let cleanLink = formData.link?.trim() || '';
-      if (cleanLink) {
-        if (cleanLink.startsWith('@')) {
-          cleanLink = `https://instagram.com/${cleanLink.slice(1)}`;
-        } else if (!cleanLink.startsWith('http://') && !cleanLink.startsWith('https://')) {
-          cleanLink = `https://${cleanLink}`;
-        }
-      } else {
-        cleanLink = DEFAULT_LINK;
-      }
+      const encoded = encodeVictorySocials({
+        instagram: formData.link,
+        phone: formData.phone,
+        alt_phone: formData.alt_phone,
+        email: formData.email,
+        facebook: formData.facebook,
+        linkedin: formData.linkedin,
+        twitter: formData.twitter,
+        website: formData.website,
+      });
 
       let rawBg = formData.blood_group;
       if (Array.isArray(rawBg)) rawBg = rawBg[0];
@@ -169,15 +193,18 @@ export default function AdminVictoryPage() {
       if (Array.isArray(rawLoc)) rawLoc = rawLoc[0];
       const cleanLoc = rawLoc?.trim() ? rawLoc.trim().slice(0, 80) : 'Pailippuram';
 
+      let targetWing = formData.wing;
+      if (targetWing === 'general') targetWing = 'non_committee';
+
       let payload = {
         name: formData.name.trim().slice(0, 120),
         photo_url: formData.photo_url?.trim() || null,
         role: formData.role.trim().slice(0, 120),
         role_ml: formData.role_ml?.trim() ? formData.role_ml.trim().slice(0, 120) : null,
-        wing: formData.wing,
-        portfolio: formData.wing === 'portfolios' ? (formData.portfolio?.trim() || null) : null,
-        link: cleanLink.slice(0, 300),
-        phone: formData.phone?.trim() ? formData.phone.trim().slice(0, 20) : null,
+        wing: targetWing,
+        portfolio: targetWing === 'portfolios' ? (formData.portfolio?.trim() || null) : null,
+        link: encoded.link,
+        phone: encoded.phone,
         blood_group: cleanBg,
         location: cleanLoc,
         display_order: Number(formData.display_order) >= 1 ? Number(formData.display_order) : 1,
@@ -450,6 +477,13 @@ export default function AdminVictoryPage() {
               onClick={() => setActiveTab('central')}
             >
               Central ({(effectiveRows || []).filter((m) => m.wing === 'central').length})
+            </button>
+            <button
+              type="button"
+              className={`chip ${activeTab === 'non_committee' ? 'on' : ''}`}
+              onClick={() => setActiveTab('non_committee')}
+            >
+              Non-Committee ({(effectiveRows || []).filter((m) => m.wing === 'non_committee' || m.wing === 'general' || m.wing === 'club_member' || m.wing === 'member').length})
             </button>
             <button
               type="button"
@@ -760,15 +794,23 @@ export default function AdminVictoryPage() {
                 </div>
               </div>
 
-              {/* Wing Selection */}
+              {/* Wing Selection / Committee vs Non-Committee */}
               <div className="field">
                 <label htmlFor="m-wing" style={{ fontWeight: 700 }}>
-                  Wing / സമിതി വിഭാഗം *
+                  Member Category / സമിതി വിഭാഗം *
                 </label>
                 <select
                   id="m-wing"
                   value={formData.wing}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, wing: e.target.value }))}
+                  onChange={(e) => {
+                    const newWing = e.target.value;
+                    setFormData((prev) => ({
+                      ...prev,
+                      wing: newWing,
+                      role: newWing === 'non_committee' && (!prev.role || prev.role === 'President' || prev.role === 'Secretary') ? 'Club Member' : prev.role,
+                      role_ml: newWing === 'non_committee' && (!prev.role_ml || prev.role_ml === 'പ്രസിഡന്റ്') ? 'ക്ലബ്ബ് അംഗം' : prev.role_ml,
+                    }));
+                  }}
                   required
                 >
                   {VICTORY_WINGS.map((w) => (
@@ -777,6 +819,11 @@ export default function AdminVictoryPage() {
                     </option>
                   ))}
                 </select>
+                {formData.wing === 'non_committee' && (
+                  <span style={{ fontSize: 11.5, color: '#047857', fontWeight: 600, marginTop: 4, display: 'block' }}>
+                    ✓ Registered as Non-Committee Club Member with personal NFC Digital Card profile
+                  </span>
+                )}
               </div>
 
               {/* Portfolio Selection (only visible if wing is portfolios) */}
@@ -799,21 +846,136 @@ export default function AdminVictoryPage() {
                 </div>
               )}
 
-              {/* Instagram / Profile Link */}
-              <div className="field">
-                <label htmlFor="m-link" style={{ fontWeight: 700 }}>
-                  Profile Link (Instagram or personal URL)
-                </label>
-                <input
-                  id="m-link"
-                  type="text"
-                  placeholder="https://www.instagram.com/victory_pailippuram or @handle"
-                  value={formData.link}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, link: e.target.value }))}
-                />
-                <span className="muted small" style={{ fontSize: 11.5 }}>
-                  Default is @victory_pailippuram official club Instagram profile
-                </span>
+              {/* SECTION: PHONE NUMBERS & DIRECT CONTACTS (NFC SYNC) */}
+              <div style={{ background: '#f8fafc', padding: 14, borderRadius: 16, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    📞 Contact Numbers &amp; Email
+                  </span>
+                  <span className="pill line" style={{ fontSize: 10.5 }}>NFC &amp; vCard</span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div className="field" style={{ margin: 0 }}>
+                    <label htmlFor="m-phone" style={{ fontWeight: 700, fontSize: 12.5 }}>
+                      Primary Phone / WhatsApp
+                    </label>
+                    <input
+                      id="m-phone"
+                      type="tel"
+                      placeholder="e.g. 9847123456"
+                      value={formData.phone}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                    />
+                  </div>
+                  <div className="field" style={{ margin: 0 }}>
+                    <label htmlFor="m-alt-phone" style={{ fontWeight: 700, fontSize: 12.5 }}>
+                      Secondary / Emergency Phone
+                    </label>
+                    <input
+                      id="m-alt-phone"
+                      type="tel"
+                      placeholder="e.g. 9447012345"
+                      value={formData.alt_phone}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, alt_phone: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="field" style={{ margin: 0 }}>
+                  <label htmlFor="m-email" style={{ fontWeight: 700, fontSize: 12.5 }}>
+                    Email Address (Optional)
+                  </label>
+                  <input
+                    id="m-email"
+                    type="email"
+                    placeholder="e.g. member@gmail.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {/* SECTION: SOCIAL MEDIA PROFILES (LINKTREE NFC IDENTITY) */}
+              <div style={{ background: '#fdfbf7', padding: 14, borderRadius: 16, border: '1px solid rgba(197, 160, 89, 0.3)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    🌐 Social Profiles (Linktree &amp; NFC)
+                  </span>
+                  <span className="pill" style={{ background: 'rgba(245, 158, 11, 0.12)', color: '#b45309', borderColor: '#fcd34d', fontSize: 10.5 }}>
+                    Linktree Cards
+                  </span>
+                </div>
+
+                {/* Instagram */}
+                <div className="field" style={{ margin: 0 }}>
+                  <label htmlFor="m-link" style={{ fontWeight: 700, fontSize: 12.5 }}>
+                    Instagram (Profile URL or @handle)
+                  </label>
+                  <input
+                    id="m-link"
+                    type="text"
+                    placeholder="https://www.instagram.com/victory_pailippuram or @handle"
+                    value={formData.link}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, link: e.target.value }))}
+                  />
+                </div>
+
+                {/* Facebook & LinkedIn */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div className="field" style={{ margin: 0 }}>
+                    <label htmlFor="m-facebook" style={{ fontWeight: 700, fontSize: 12.5 }}>
+                      Facebook URL
+                    </label>
+                    <input
+                      id="m-facebook"
+                      type="text"
+                      placeholder="https://facebook.com/username"
+                      value={formData.facebook}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, facebook: e.target.value }))}
+                    />
+                  </div>
+                  <div className="field" style={{ margin: 0 }}>
+                    <label htmlFor="m-linkedin" style={{ fontWeight: 700, fontSize: 12.5 }}>
+                      LinkedIn Profile
+                    </label>
+                    <input
+                      id="m-linkedin"
+                      type="text"
+                      placeholder="https://linkedin.com/in/username"
+                      value={formData.linkedin}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, linkedin: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                {/* Twitter / X & Website */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div className="field" style={{ margin: 0 }}>
+                    <label htmlFor="m-twitter" style={{ fontWeight: 700, fontSize: 12.5 }}>
+                      Twitter / X (@handle or link)
+                    </label>
+                    <input
+                      id="m-twitter"
+                      type="text"
+                      placeholder="@handle or https://x.com/username"
+                      value={formData.twitter}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, twitter: e.target.value }))}
+                    />
+                  </div>
+                  <div className="field" style={{ margin: 0 }}>
+                    <label htmlFor="m-website" style={{ fontWeight: 700, fontSize: 12.5 }}>
+                      Personal Website / Portfolio
+                    </label>
+                    <input
+                      id="m-website"
+                      type="text"
+                      placeholder="https://example.com"
+                      value={formData.website}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, website: e.target.value }))}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* NFC & Emergency Vitals: Blood Group & Location */}

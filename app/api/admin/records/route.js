@@ -49,6 +49,22 @@ export function normalizeOutputRow(table, row) {
   if (Array.isArray(res.location)) {
     res.location = res.location[0] || 'Pailippuram';
   }
+  if (table === 'victory_members' && typeof res.link === 'string' && res.link.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(res.link);
+      res.instagram = parsed.instagram || '';
+      res.facebook = parsed.facebook || '';
+      res.linkedin = parsed.linkedin || '';
+      res.twitter = parsed.twitter || '';
+      res.website = parsed.website || '';
+      if (parsed.alt_phone) res.alt_phone = parsed.alt_phone;
+      if (parsed.email) res.email = parsed.email;
+      if (parsed.whatsapp) res.whatsapp = parsed.whatsapp;
+      res.link = parsed.instagram || parsed.website || 'https://www.instagram.com/victory_pailippuram';
+    } catch {
+      // ignore
+    }
+  }
   return res;
 }
 
@@ -171,15 +187,58 @@ export function sanitizePayload(table, data, isInsert = false) {
     if (cleaned.name) cleaned.name = cleaned.name.slice(0, 120);
     if (cleaned.role) cleaned.role = cleaned.role.slice(0, 120);
     if (cleaned.role_ml) cleaned.role_ml = cleaned.role_ml.slice(0, 120);
-    if (cleaned.phone) cleaned.phone = cleaned.phone.slice(0, 20);
+    if (cleaned.phone) cleaned.phone = cleaned.phone.slice(0, 80);
     cleaned.display_order = Number(cleaned.display_order) >= 1 ? Number(cleaned.display_order) : 1;
-    const validWings = ['executive', 'portfolios', 'gcc', 'central'];
-    if (!validWings.includes(cleaned.wing)) cleaned.wing = 'executive';
+    
+    // Map non-committee options safely to PostgreSQL allowed check constraint values
+    let wing = cleaned.wing;
+    if (wing === 'general') wing = 'non_committee';
+    const validWings = ['executive', 'portfolios', 'gcc', 'central', 'non_committee', 'club_member', 'member', 'advisory', 'volunteer'];
+    if (!validWings.includes(wing)) wing = 'executive';
+    cleaned.wing = wing;
     if (cleaned.wing !== 'portfolios') cleaned.portfolio = null;
+
+    // Pack social profiles and extra contact numbers safely into link JSON
+    const hasExtraSocials = Boolean(
+      cleaned.facebook || cleaned.linkedin || cleaned.twitter || cleaned.website ||
+      cleaned.alt_phone || cleaned.email || cleaned.whatsapp
+    );
+
     let link = cleaned.link || '';
-    if (link && link.startsWith('@')) link = `https://instagram.com/${link.slice(1)}`;
-    else if (link && !link.startsWith('http://') && !link.startsWith('https://')) link = `https://${link}`;
-    cleaned.link = link ? link.slice(0, 300) : 'https://www.instagram.com/victory_pailippuram';
+    if (hasExtraSocials) {
+      let currentSocials = {};
+      if (typeof link === 'string' && link.startsWith('{')) {
+        try { currentSocials = JSON.parse(link); } catch { currentSocials = {}; }
+      }
+      const combined = {
+        instagram: cleaned.instagram || currentSocials.instagram || (!link.startsWith('{') && link ? link : 'https://www.instagram.com/victory_pailippuram'),
+        facebook: cleaned.facebook || currentSocials.facebook || undefined,
+        linkedin: cleaned.linkedin || currentSocials.linkedin || undefined,
+        twitter: cleaned.twitter || currentSocials.twitter || undefined,
+        website: cleaned.website || currentSocials.website || undefined,
+        alt_phone: cleaned.alt_phone || currentSocials.alt_phone || undefined,
+        email: cleaned.email ? cleaned.email.toLowerCase() : currentSocials.email || undefined,
+        whatsapp: cleaned.whatsapp || currentSocials.whatsapp || undefined,
+      };
+      cleaned.link = JSON.stringify(combined);
+    } else if (typeof link === 'string' && link.startsWith('{')) {
+      cleaned.link = link;
+    } else {
+      if (link && link.startsWith('@')) link = `https://instagram.com/${link.slice(1)}`;
+      else if (link && !link.startsWith('http://') && !link.startsWith('https://')) link = `https://${link}`;
+      cleaned.link = link ? link.slice(0, 300) : 'https://www.instagram.com/victory_pailippuram';
+    }
+
+    // Strip virtual columns not physically in Supabase table
+    delete cleaned.instagram;
+    delete cleaned.facebook;
+    delete cleaned.linkedin;
+    delete cleaned.twitter;
+    delete cleaned.website;
+    delete cleaned.alt_phone;
+    delete cleaned.email;
+    delete cleaned.whatsapp;
+
     if (cleaned.location) cleaned.location = cleaned.location.trim().slice(0, 80);
 
     // In Supabase PostgreSQL, victory_members.blood_group is an array column text[]
