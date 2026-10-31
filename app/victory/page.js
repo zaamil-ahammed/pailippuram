@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -21,7 +21,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { STARTER_VICTORY_MEMBERS } from '../../lib/mockStore';
+import { STARTER_VICTORY_MEMBERS, memoryStore } from '../../lib/mockStore';
 
 const PORTFOLIO_CONFIG = {
   'Sports Managers': {
@@ -76,34 +76,76 @@ export default function VictoryClubLandingPage() {
     }
   }, []);
 
-  // 2. Safely attempt to fetch updated records from Supabase, retaining in-code details as rock-solid fallback
-  useEffect(() => {
-    let isMounted = true;
-    async function fetchVictoryMembers() {
-      try {
-        setLoadingMembers(true);
-        const { data, error } = await supabase
-          .from('victory_members')
-          .select('*')
-          .order('display_order', { ascending: true });
-
-        if (!error && Array.isArray(data) && data.length > 0 && isMounted) {
-          setMembers(data);
-        }
-      } catch (err) {
-        console.warn('Victory Club live query fallback to in-code details:', err);
-      } finally {
-        if (isMounted) {
-          setLoadingMembers(false);
-        }
+  // 2. Fetch live records from database, with multi-layer fallback & instant sync
+  const loadVictoryMembers = useCallback(async () => {
+    // Layer 1: Internal records API route (server-side, service-role backed, zero CORS/RLS issues)
+    try {
+      setLoadingMembers(true);
+      const res = await fetch(`/api/admin/records?table=victory_members&_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { Pragma: 'no-cache', 'Cache-Control': 'no-cache' },
+      });
+      const json = await res.json().catch(() => null);
+      if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
+        setMembers(json.data);
+        return;
       }
+    } catch (apiErr) {
+      console.warn('[Victory] Internal API query fallback:', apiErr);
     }
 
-    fetchVictoryMembers();
-    return () => {
-      isMounted = false;
-    };
+    // Layer 2: Direct Supabase client query
+    try {
+      const { data, error } = await supabase
+        .from('victory_members')
+        .select('*')
+        .order('display_order', { ascending: true });
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        setMembers(data);
+        return;
+      }
+    } catch (sbErr) {
+      console.warn('[Victory] Supabase query fallback:', sbErr);
+    }
+
+    // Layer 3: Client memoryStore / localStorage fallback
+    try {
+      const local = memoryStore.getTable('victory_members');
+      if (Array.isArray(local) && local.length > 0) {
+        setMembers(local);
+      }
+    } catch {
+      // retain in-memory starter
+    } finally {
+      setLoadingMembers(false);
+    }
   }, []);
+
+  // Fetch immediately on mount
+  useEffect(() => {
+    loadVictoryMembers();
+  }, [loadVictoryMembers]);
+
+  // Re-fetch automatically when window gains focus or document becomes visible (e.g. after uploading photos in admin panel)
+  useEffect(() => {
+    function onFocus() {
+      loadVictoryMembers();
+    }
+    function onVisibility() {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        loadVictoryMembers();
+      }
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', onFocus);
+      document.addEventListener('visibilitychange', onVisibility);
+      return () => {
+        window.removeEventListener('focus', onFocus);
+        document.removeEventListener('visibilitychange', onVisibility);
+      };
+    }
+  }, [loadVictoryMembers]);
 
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -113,18 +155,23 @@ export default function VictoryClubLandingPage() {
     }
   };
 
-  // Pre-categorize all members by wing
-  const executiveMembers = useMemo(() => {
-    return members
-      .filter((m) => m.wing === 'executive')
-      .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+  // Filter approved members
+  const activeMembers = useMemo(() => {
+    return members.filter((m) => m.status !== 'hidden');
   }, [members]);
 
+  // Pre-categorize all members by wing
+  const executiveMembers = useMemo(() => {
+    return activeMembers
+      .filter((m) => m.wing === 'executive')
+      .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+  }, [activeMembers]);
+
   const portfolioMembers = useMemo(() => {
-    return members
+    return activeMembers
       .filter((m) => m.wing === 'portfolios')
       .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-  }, [members]);
+  }, [activeMembers]);
 
   // Group portfolio members by their department
   const portfolioGroups = useMemo(() => {
@@ -143,16 +190,16 @@ export default function VictoryClubLandingPage() {
   }, [portfolioMembers]);
 
   const gccMembers = useMemo(() => {
-    return members
+    return activeMembers
       .filter((m) => m.wing === 'gcc')
       .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-  }, [members]);
+  }, [activeMembers]);
 
   const centralMembers = useMemo(() => {
-    return members
+    return activeMembers
       .filter((m) => m.wing === 'central')
       .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-  }, [members]);
+  }, [activeMembers]);
 
   return (
     <div className="victory-page">
@@ -719,18 +766,51 @@ export default function VictoryClubLandingPage() {
           border-color: rgba(197, 160, 89, 0.45);
         }
 
+        .roster-avatar {
+          width: 38px;
+          height: 38px;
+          min-width: 38px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #272216 0%, #151411 100%);
+          border: 1.5px solid #c5a059;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          overflow: hidden;
+          position: relative;
+        }
+
+        .roster-avatar img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
         .roster-index {
-          width: 26px;
-          height: 26px;
-          border-radius: 8px;
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
           background: rgba(197, 160, 89, 0.15);
           color: #e5c98f;
-          font-size: 11.5px;
+          font-size: 11px;
           font-weight: 700;
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
+        }
+
+        .avatar-fallback {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: inherit;
+          font-weight: inherit;
+          color: inherit;
         }
 
         .roster-name {
@@ -930,13 +1010,17 @@ export default function VictoryClubLandingPage() {
                               <img
                                 src={m.photo_url}
                                 alt={m.name}
+                                referrerPolicy="no-referrer"
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
+                                  const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback');
+                                  if (fallback) fallback.style.display = 'flex';
                                 }}
                               />
-                            ) : (
-                              <span>{initial}</span>
-                            )}
+                            ) : null}
+                            <span className="avatar-fallback" style={{ display: m.photo_url ? 'none' : 'flex' }}>
+                              {initial}
+                            </span>
                           </div>
                           <h4 className="exec-name">{m.name}</h4>
                           <div className="exec-role-ml">{m.role_ml || m.role}</div>
@@ -1063,13 +1147,17 @@ export default function VictoryClubLandingPage() {
                                     <img
                                       src={m.photo_url}
                                       alt={m.name}
+                                      referrerPolicy="no-referrer"
                                       onError={(e) => {
                                         e.currentTarget.style.display = 'none';
+                                        const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback');
+                                        if (fallback) fallback.style.display = 'flex';
                                       }}
                                     />
-                                  ) : (
-                                    <span>{initial}</span>
-                                  )}
+                                  ) : null}
+                                  <span className="avatar-fallback" style={{ display: m.photo_url ? 'none' : 'flex' }}>
+                                    {initial}
+                                  </span>
                                 </div>
                                 <div className="card-details">
                                   <h5 className="card-name">{m.name}</h5>
@@ -1139,7 +1227,23 @@ export default function VictoryClubLandingPage() {
                   <div className="roster-grid">
                     {gccMembers.map((m, idx) => (
                       <div key={m.id || m.name} className="roster-item">
-                        <span className="roster-index">#{idx + 1}</span>
+                        <div className="roster-avatar">
+                          {m.photo_url ? (
+                            <img
+                              src={m.photo_url}
+                              alt={m.name}
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                const fallback = e.currentTarget.parentElement?.querySelector('.roster-index');
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          <span className="roster-index" style={{ display: m.photo_url ? 'none' : 'flex' }}>
+                            #{idx + 1}
+                          </span>
+                        </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <h5 className="roster-name">{m.name}</h5>
                           <p className="roster-role-tag">{m.role_ml || 'പ്രവാസി ചാപ്റ്റർ അംഗം'}</p>
@@ -1201,7 +1305,23 @@ export default function VictoryClubLandingPage() {
                   <div className="roster-grid">
                     {centralMembers.map((m, idx) => (
                       <div key={m.id || m.name} className="roster-item">
-                        <span className="roster-index">#{idx + 1}</span>
+                        <div className="roster-avatar">
+                          {m.photo_url ? (
+                            <img
+                              src={m.photo_url}
+                              alt={m.name}
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                const fallback = e.currentTarget.parentElement?.querySelector('.roster-index');
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          <span className="roster-index" style={{ display: m.photo_url ? 'none' : 'flex' }}>
+                            #{idx + 1}
+                          </span>
+                        </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <h5 className="roster-name">{m.name}</h5>
                           <p className="roster-role-tag">{m.role_ml || 'സെൻട്രൽ കമ്മിറ്റി അംഗം'}</p>
