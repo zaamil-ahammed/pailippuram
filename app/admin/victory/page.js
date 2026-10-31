@@ -110,6 +110,10 @@ export default function AdminVictoryPage() {
   const handleOpenEdit = (member) => {
     setErrorMsg('');
     setSuccessMsg('');
+    const rawBg = member.blood_group;
+    const cleanBg = Array.isArray(rawBg) ? rawBg[0] : (rawBg || 'O+');
+    const rawLoc = member.location;
+    const cleanLoc = Array.isArray(rawLoc) ? rawLoc[0] : (rawLoc || 'Pailippuram');
     setFormData({
       name: member.name || '',
       photo_url: member.photo_url || '',
@@ -119,8 +123,8 @@ export default function AdminVictoryPage() {
       portfolio: member.portfolio || '',
       link: member.link || DEFAULT_LINK,
       phone: member.phone || '',
-      blood_group: member.blood_group || 'O+',
-      location: member.location || 'Pailippuram',
+      blood_group: cleanBg,
+      location: cleanLoc,
       display_order: member.display_order ?? 1,
       status: member.status || 'approved',
     });
@@ -157,6 +161,14 @@ export default function AdminVictoryPage() {
         cleanLink = DEFAULT_LINK;
       }
 
+      let rawBg = formData.blood_group;
+      if (Array.isArray(rawBg)) rawBg = rawBg[0];
+      const cleanBg = rawBg?.trim() ? rawBg.trim().slice(0, 10).toUpperCase() : 'O+';
+
+      let rawLoc = formData.location;
+      if (Array.isArray(rawLoc)) rawLoc = rawLoc[0];
+      const cleanLoc = rawLoc?.trim() ? rawLoc.trim().slice(0, 80) : 'Pailippuram';
+
       let payload = {
         name: formData.name.trim().slice(0, 120),
         photo_url: formData.photo_url?.trim() || null,
@@ -166,8 +178,8 @@ export default function AdminVictoryPage() {
         portfolio: formData.wing === 'portfolios' ? (formData.portfolio?.trim() || null) : null,
         link: cleanLink.slice(0, 300),
         phone: formData.phone?.trim() ? formData.phone.trim().slice(0, 20) : null,
-        blood_group: formData.blood_group?.trim() ? formData.blood_group.trim().slice(0, 10) : 'O+',
-        location: formData.location?.trim() ? formData.location.trim().slice(0, 80) : 'Pailippuram',
+        blood_group: cleanBg,
+        location: cleanLoc,
         display_order: Number(formData.display_order) >= 1 ? Number(formData.display_order) : 1,
         status: formData.status === 'hidden' ? 'hidden' : 'approved',
         updated_at: new Date().toISOString(),

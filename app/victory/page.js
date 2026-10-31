@@ -88,8 +88,13 @@ export default function VictoryClubLandingPage() {
         headers: { Pragma: 'no-cache', 'Cache-Control': 'no-cache' },
       });
       const json = await res.json().catch(() => null);
+      const cleanMember = (m) => ({
+        ...m,
+        blood_group: Array.isArray(m?.blood_group) ? (m.blood_group[0] || 'O+') : (m?.blood_group || 'O+'),
+        location: Array.isArray(m?.location) ? (m.location[0] || 'Pailippuram') : (m?.location || 'Pailippuram'),
+      });
       if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
-        setMembers(json.data);
+        setMembers(json.data.map(cleanMember));
         return;
       }
     } catch (apiErr) {
@@ -104,7 +109,12 @@ export default function VictoryClubLandingPage() {
         .order('display_order', { ascending: true });
 
       if (!error && Array.isArray(data) && data.length > 0) {
-        setMembers(data);
+        const cleanMember = (m) => ({
+          ...m,
+          blood_group: Array.isArray(m?.blood_group) ? (m.blood_group[0] || 'O+') : (m?.blood_group || 'O+'),
+          location: Array.isArray(m?.location) ? (m.location[0] || 'Pailippuram') : (m?.location || 'Pailippuram'),
+        });
+        setMembers(data.map(cleanMember));
         return;
       }
     } catch (sbErr) {
@@ -115,7 +125,12 @@ export default function VictoryClubLandingPage() {
     try {
       const local = memoryStore.getTable('victory_members');
       if (Array.isArray(local) && local.length > 0) {
-        setMembers(local);
+        const cleanMember = (m) => ({
+          ...m,
+          blood_group: Array.isArray(m?.blood_group) ? (m.blood_group[0] || 'O+') : (m?.blood_group || 'O+'),
+          location: Array.isArray(m?.location) ? (m.location[0] || 'Pailippuram') : (m?.location || 'Pailippuram'),
+        });
+        setMembers(local.map(cleanMember));
       }
     } catch {
       // retain in-memory starter

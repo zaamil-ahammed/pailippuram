@@ -39,6 +39,19 @@ export function getHiddenStatusForTable(table) {
   return 'hidden';
 }
 
+export function normalizeOutputRow(table, row) {
+  if (!row || typeof row !== 'object') return row;
+  if (Array.isArray(row)) return row.map((r) => normalizeOutputRow(table, r));
+  const res = { ...row };
+  if (Array.isArray(res.blood_group)) {
+    res.blood_group = res.blood_group[0] || 'O+';
+  }
+  if (Array.isArray(res.location)) {
+    res.location = res.location[0] || 'Pailippuram';
+  }
+  return res;
+}
+
 export function sanitizePayload(table, data, isInsert = false) {
   if (!data || typeof data !== 'object') return {};
   const cleaned = { ...data };
@@ -127,10 +140,13 @@ export function sanitizePayload(table, data, isInsert = false) {
     cleaned.available = Boolean(cleaned.available ?? true);
     cleaned.consent = Boolean(cleaned.consent ?? true);
     const validBg = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-    if (cleaned.blood_group && !validBg.includes(cleaned.blood_group.toUpperCase())) {
+    let bg = cleaned.blood_group;
+    if (Array.isArray(bg)) bg = bg[0];
+    if (typeof bg === 'string') bg = bg.trim().toUpperCase();
+    if (bg && !validBg.includes(bg)) {
       cleaned.blood_group = 'O+';
-    } else if (cleaned.blood_group) {
-      cleaned.blood_group = cleaned.blood_group.toUpperCase();
+    } else if (bg) {
+      cleaned.blood_group = bg;
     }
   } else if (table === 'categories') {
     delete cleaned.created_at;
@@ -164,6 +180,17 @@ export function sanitizePayload(table, data, isInsert = false) {
     if (link && link.startsWith('@')) link = `https://instagram.com/${link.slice(1)}`;
     else if (link && !link.startsWith('http://') && !link.startsWith('https://')) link = `https://${link}`;
     cleaned.link = link ? link.slice(0, 300) : 'https://www.instagram.com/victory_pailippuram';
+    if (cleaned.location) cleaned.location = cleaned.location.trim().slice(0, 80);
+
+    // In Supabase PostgreSQL, victory_members.blood_group is an array column text[]
+    if (cleaned.blood_group !== undefined && cleaned.blood_group !== null) {
+      let rawBg = cleaned.blood_group;
+      if (Array.isArray(rawBg)) rawBg = rawBg[0];
+      if (typeof rawBg === 'string') rawBg = rawBg.trim().toUpperCase();
+      const validBg = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+      if (!rawBg || !validBg.includes(rawBg)) rawBg = 'O+';
+      cleaned.blood_group = [rawBg];
+    }
   } else if (table === 'submissions') {
     const validSubStatus = ['pending', 'approved', 'rejected', 'handled'];
     if (cleaned.status && !validSubStatus.includes(cleaned.status)) {
@@ -251,6 +278,30 @@ export async function POST(req) {
           }
         }
 
+        // Resilient retry 5: Postgres array format (malformed array literal: e.g. text[] vs text)
+        if (res.error && res.error.message && (res.error.message.includes('malformed array literal') || res.error.message.includes('array'))) {
+          let retryData = { ...insertData };
+          let changed = false;
+          for (const k of ['blood_group', 'location']) {
+            if (retryData[k] !== undefined && retryData[k] !== null) {
+              if (typeof retryData[k] === 'string') {
+                retryData[k] = [retryData[k]];
+                changed = true;
+              } else if (Array.isArray(retryData[k])) {
+                retryData[k] = retryData[k][0] || null;
+                changed = true;
+              }
+            }
+          }
+          if (changed) {
+            const arrRes = await supabase.from(table).insert(retryData).select();
+            if (!arrRes.error && arrRes.data) {
+              res = arrRes;
+              insertData = retryData;
+            }
+          }
+        }
+
         if (res.error) {
           console.error(`[POST /api/admin/records] Error on ${table}:`, res.error);
           remoteError = res.error;
@@ -285,7 +336,7 @@ export async function POST(req) {
       else localTable.unshift(finalRow);
     }
 
-    return NextResponse.json({ success: true, data: finalRow }, { status: 201 });
+    return NextResponse.json({ success: true, data: normalizeOutputRow(table, finalRow) }, { status: 201 });
   } catch (err) {
     console.error('[POST /api/admin/records Fatal]', err);
     return NextResponse.json({ success: false, error: err.message || 'Internal server error' }, { status: 500 });
@@ -348,6 +399,30 @@ export async function PATCH(req) {
           }
         }
 
+        // Resilient retry 5: Postgres array format (malformed array literal: e.g. text[] vs text)
+        if (res.error && res.error.message && (res.error.message.includes('malformed array literal') || res.error.message.includes('array'))) {
+          let retryData = { ...updateData };
+          let changed = false;
+          for (const k of ['blood_group', 'location']) {
+            if (retryData[k] !== undefined && retryData[k] !== null) {
+              if (typeof retryData[k] === 'string') {
+                retryData[k] = [retryData[k]];
+                changed = true;
+              } else if (Array.isArray(retryData[k])) {
+                retryData[k] = retryData[k][0] || null;
+                changed = true;
+              }
+            }
+          }
+          if (changed) {
+            const arrRes = await supabase.from(table).update(retryData).eq('id', id).select();
+            if (!arrRes.error && arrRes.data) {
+              res = arrRes;
+              updateData = retryData;
+            }
+          }
+        }
+
         if (res.error) {
           console.error(`[PATCH /api/admin/records] Error on ${table}:`, res.error);
           remoteError = res.error;
@@ -382,7 +457,7 @@ export async function PATCH(req) {
       localTable.unshift(finalRow);
     }
 
-    return NextResponse.json({ success: true, data: finalRow }, { status: 200 });
+    return NextResponse.json({ success: true, data: normalizeOutputRow(table, finalRow) }, { status: 200 });
   } catch (err) {
     console.error('[PATCH /api/admin/records Fatal]', err);
     return NextResponse.json({ success: false, error: err.message || 'Internal server error' }, { status: 500 });
@@ -530,7 +605,7 @@ export async function GET(req) {
       }
     }
 
-    return NextResponse.json({ success: true, data }, { status: 200, headers: NO_CACHE_HEADERS });
+    return NextResponse.json({ success: true, data: normalizeOutputRow(table, data) }, { status: 200, headers: NO_CACHE_HEADERS });
   } catch (err) {
     console.error('[GET /api/admin/records Fatal]', err);
     return NextResponse.json(

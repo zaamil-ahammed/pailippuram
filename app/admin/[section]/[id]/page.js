@@ -128,7 +128,18 @@ export default function AdminEdit() {
             body: cleanBody,
           });
         }
-        return setValues(Object.fromEntries(cfg.fields.map((f) => [f.name, f.name === 'phone' ? cleanPhone : (data[f.name] ?? blank[f.name])])));
+        return setValues(
+          Object.fromEntries(
+            cfg.fields.map((f) => {
+              let val = data[f.name];
+              if (f.name === 'phone') val = cleanPhone;
+              else if (f.name === 'blood_group') val = Array.isArray(val) ? val[0] : (val ?? 'O+');
+              else if (f.name === 'location') val = Array.isArray(val) ? val[0] : (val ?? 'Pailippuram');
+              else val = val ?? blank[f.name];
+              return [f.name, val];
+            })
+          )
+        );
       }
       const from = new URLSearchParams(window.location.search).get('from');
       if (from) {

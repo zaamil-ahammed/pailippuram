@@ -244,6 +244,66 @@ export default function Home() {
           <span style={{ fontWeight: 700 }}>Share information · വിവരം പങ്കിടുക</span>
         </Link>
 
+        {/* Urgent Community WhatsApp Alerts Banner */}
+        <Link
+          href="/subscribe"
+          className="card"
+          style={{
+            background: 'linear-gradient(135deg, #181818 0%, #0d0d0d 100%)',
+            color: '#ffffff',
+            border: '1.5px solid var(--accent)',
+            borderRadius: 18,
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            boxShadow: '0 6px 20px rgba(0, 0, 0, 0.25)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                background: 'linear-gradient(150deg, #dfbd69 0%, #926f34 100%)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 18,
+                boxShadow: '0 2px 8px rgba(146, 111, 52, 0.35)',
+                flexShrink: 0,
+              }}
+            >
+              💬
+            </div>
+            <div>
+              <strong style={{ fontSize: 14.5, color: '#ffffff', display: 'block', lineHeight: 1.2 }}>
+                Urgent Community Alerts · വാട്സാപ്പ് അറിയിപ്പുകൾ
+              </strong>
+              <span style={{ fontSize: 12, color: '#d8d4cc' }}>
+                KSEB, കുടിവെള്ളം, കാലാവസ്ഥ മുന്നറിയിപ്പുകൾ ഫോണിൽ നേടാം
+              </span>
+            </div>
+          </div>
+          <span
+            style={{
+              background: 'linear-gradient(150deg, #dfbd69 0%, #926f34 100%)',
+              color: '#ffffff',
+              fontWeight: 800,
+              fontSize: 12,
+              padding: '7px 12px',
+              borderRadius: 10,
+              whiteSpace: 'nowrap',
+              boxShadow: '0 2px 8px rgba(146, 111, 52, 0.3)',
+            }}
+          >
+            Subscribe →
+          </span>
+        </Link>
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
           <h2>Latest announcements</h2>
           <Link href="/announcements" style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold-dark)' }}>

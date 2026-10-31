@@ -317,8 +317,8 @@ export default function AdminNotificationsPage() {
                       rel="noopener noreferrer"
                       className="btn dark"
                       style={{
-                        background: '#25D366',
-                        borderColor: '#22c55e',
+                        background: 'linear-gradient(150deg, #dfbd69 0%, #926f34 100%)',
+                        borderColor: 'var(--accent)',
                         color: '#ffffff',
                         fontWeight: 700,
                         fontSize: 13.5,

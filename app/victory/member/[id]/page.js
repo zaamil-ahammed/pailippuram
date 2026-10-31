@@ -53,7 +53,7 @@ function downloadVCard(member) {
     member.role_ml ? `X-ROLE-ML:${member.role_ml}` : '',
     member.phone ? `TEL;TYPE=CELL,VOICE,PREF:${member.phone}` : '',
     member.link ? `URL:${member.link}` : 'URL:https://www.instagram.com/victory_pailippuram',
-    `NOTE:Victory Club Member · Wing: ${member.wing || 'Club'} · Blood: ${member.blood_group || 'Registered'} · Location: ${member.location || 'Pailippuram'}`,
+    `NOTE:Victory Club Member · Wing: ${member.wing || 'Club'} · Blood: ${Array.isArray(member.blood_group) ? member.blood_group[0] : (member.blood_group || 'Registered')} · Location: ${Array.isArray(member.location) ? member.location[0] : (member.location || 'Pailippuram')}`,
     'CATEGORIES:Victory Club,Community,Sports',
     'END:VCARD',
   ].filter(Boolean);
@@ -189,8 +189,10 @@ export default function MemberNfcProfilePage() {
 
   const avatarInitial = (displayName || 'V').charAt(0).toUpperCase();
   const whatsAppPhone = formatWhatsAppNumber(member?.phone);
-  const bloodGroup = member?.blood_group || 'O+';
-  const memberLocation = member?.location || (member?.wing === 'gcc' ? 'GCC / Diaspora' : 'Pailippuram, Kerala');
+  const rawBg = member?.blood_group;
+  const bloodGroup = Array.isArray(rawBg) ? rawBg[0] : (rawBg || 'O+');
+  const rawLoc = member?.location;
+  const memberLocation = Array.isArray(rawLoc) ? rawLoc[0] : (rawLoc || (member?.wing === 'gcc' ? 'GCC' : 'Pailippuram, Kerala'));
   const instagramUrl = member?.link || 'https://www.instagram.com/victory_pailippuram';
 
   if (loading) {
@@ -406,7 +408,7 @@ export default function MemberNfcProfilePage() {
             </div>
             <span className="nfc-verified-pill">
               <ShieldCheck size={13} />
-              <span>Verified Officer</span>
+              <span>Verified</span>
             </span>
           </div>
 
